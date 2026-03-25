@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Niveau 5 : Le Boss (IA Améliorée)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        canvas {
+            background-color: #87CEEB;
+            display: block;
+            width: 100%;
+            border-bottom: 4px solid #34495e;
+            cursor: pointer;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #1a252f;
+        }
+
+        .d-pad,
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background-color: #7f8c8d;
+            border: 2px solid #bdc3c7;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .btn:active {
+            background-color: #e74c3c;
+        }
+
+        .btn-attack {
+            background-color: #e67e22;
+            border-color: #d35400;
+        }
+
+        .instructions {
+            font-size: 14px;
+            margin-top: 5px;
+            color: #bdc3c7;
+        }
+
+        /* --- OVERLAY MODE PAYSAGE --- */
+        #orientationWarning {
+            display: none;
+            /* Caché par défaut */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #1a252f;
+            color: #f1c40f;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* Si le téléphone est tenu à la verticale (Portrait) */
+        @media screen and (orientation: portrait) {
+            #orientationWarning {
+                display: flex;
+                /* Affiche l'écran de blocage */
+            }
+
+            #gameContainer,
+            h2,
+            .instructions {
+                display: none !important;
+                /* Cache le jeu pour éviter les bugs d'affichage */
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Boss : Le Schweissdissi Enragé</h2>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="controls">
+            <div class="d-pad">
+                <div class="btn" id="btnLeft">⬅️</div>
+                <div class="btn" id="btnRight">➡️</div>
+            </div>
+            <div class="action-buttons">
+                <div class="btn" id="btnJump">⬆️</div>
+                <div class="btn btn-attack" id="btnAttack">👊</div>
+            </div>
+        </div>
+    </div>
+    <div class="instructions">Éjecte-le ou réduis ses PV à zéro ! Attention aux pierres.</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Contrôles
+        const input = { left: false, right: false, jump: false, attack: false };
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "ArrowLeft") input.left = true;
+            if (e.code === "ArrowRight") input.right = true;
+            if (e.code === "ArrowUp") input.jump = true;
+            if (e.code === "Space") input.attack = true;
+        });
+        window.addEventListener("keyup", (e) => {
+            if (e.code === "ArrowLeft") input.left = false;
+            if (e.code === "ArrowRight") input.right = false;
+            if (e.code === "ArrowUp") input.jump = false;
+            if (e.code === "Space") input.attack = false;
+        });
+
+        const bindButton = (id, key) => {
+            const btn = document.getElementById(id);
+            btn.addEventListener("touchstart", (e) => { e.preventDefault(); input[key] = true; });
+            btn.addEventListener("touchend", (e) => { e.preventDefault(); input[key] = false; });
+            btn.addEventListener("mousedown", () => input[key] = true);
+            btn.addEventListener("mouseup", () => input[key] = false);
+            btn.addEventListener("mouseleave", () => input[key] = false);
+        };
+        bindButton("btnLeft", "left"); bindButton("btnRight", "right");
+        bindButton("btnJump", "jump"); bindButton("btnAttack", "attack");
+
+        canvas.addEventListener("mousedown", () => { if (gameOver || victory) resetGame(); });
+        canvas.addEventListener("touchstart", (e) => { if (gameOver || victory) { e.preventDefault(); resetGame(); } });
+
+        // Variables Globales
+        const gravity = 0.6; const friction = 0.8;
+        let gameOver = false; let victory = false;
+        const platform = { x: 100, y: 300, width: 600, height: 20 };
+        const projectiles = [];
+
+        // Joueur
+        const player = {
+            x: 200, y: 100, width: 40, height: 40,
+            vx: 0, vy: 0, speed: 5, jumpPower: -12,
+            isGrounded: false, direction: 1,
+            attackCooldown: 0, isAttacking: false,
+            invulnerable: 0,
+            lives: 3
+        };
+
+        // Boss
+        const boss = {
+            x: 500, y: 100, width: 60, height: 60,
+            vx: 0, vy: 0, speed: 2.5, isGrounded: false, direction: -1,
+            actionTimer: 0, state: "idle", attackCooldown: 0, isAttacking: false,
+            hp: 15, maxHp: 15
+        };
+
+        function resetGame() {
+            player.lives = 3;
+            player.x = 200; player.y = 100; player.vx = 0; player.vy = 0; player.invulnerable = 60;
+            boss.x = 500; boss.y = 100; boss.vx = 0; boss.vy = 0; boss.state = "idle";
+            boss.hp = boss.maxHp;
+            projectiles.length = 0;
+            gameOver = false;
+            victory = false;
+        }
+
+        function loseLife() {
+            if (player.invulnerable > 0) return;
+            player.lives--;
+            player.invulnerable = 60;
+            if (player.lives <= 0) gameOver = true;
+        }
+
+        function update() {
+            if (gameOver || victory) return;
+
+            // --- JOUEUR ---
+            if (player.invulnerable > 0) player.invulnerable--;
+            if (player.attackCooldown > 0) player.attackCooldown--;
+
+            if (Math.abs(player.vx) < 6) {
+                if (input.left) { player.vx -= 1; player.direction = -1; }
+                if (input.right) { player.vx += 1; player.direction = 1; }
+            }
+            player.vx *= friction;
+            player.x += player.vx;
+
+            if (input.jump && player.isGrounded) {
+                player.vy = player.jumpPower; player.isGrounded = false;
+            }
+            player.vy += gravity; player.y += player.vy;
+
+            player.isAttacking = false;
+            if (input.attack && player.attackCooldown === 0) {
+                player.isAttacking = true;
+                player.attackCooldown = 30;
+                playerAttack();
+            }
+
+            // --- IA DU BOSS (CORRIGÉE) ---
+            let dist = player.x - boss.x;
+            boss.direction = dist > 0 ? 1 : -1; // Se tourne toujours vers le joueur
+            if (boss.attackCooldown > 0) boss.attackCooldown--;
+            boss.actionTimer--;
+
+            // Prise de décision (nouvelle action quand le timer tombe à zéro)
+            if (boss.actionTimer <= 0) {
+                boss.actionTimer = 40 + Math.random() * 50; // Choix d'action toutes les ~1.5 secondes
+                let absDist = Math.abs(dist);
+
+                if (absDist < 80 && boss.attackCooldown === 0) {
+                    boss.state = "melee"; // Corps à corps
+                    boss.actionTimer = 30;
+                } else if (absDist > 150 && boss.attackCooldown === 0 && Math.random() < 0.6) {
+                    boss.state = "range"; // Jet de pierre (60% de chance s'il est assez loin)
+                    boss.actionTimer = 25;
+                } else {
+                    // S'il n'attaque pas, il choisit entre marcher vers toi ou faire une pause
+                    if (Math.random() > 0.5) {
+                        boss.state = "chase"; // Il avance
+                    } else {
+                        boss.state = "idle";  // Il s'arrête
+                    }
+                }
+            }
+
+            // Exécution de l'état actuel du boss
+            boss.isAttacking = false;
+            if (boss.state === "chase" && Math.abs(boss.vx) < 4) {
+                boss.vx = boss.direction * boss.speed;
+            } else if (boss.state === "idle") {
+                boss.vx *= friction; // Arrêt progressif
+            } else if (boss.state === "melee") {
+                boss.vx *= 0.5; // Il freine avant de taper
+                if (boss.actionTimer === 5) {
+                    boss.isAttacking = true;
+                    bossAttackMelee();
+                    boss.attackCooldown = 50;
+                }
+            } else if (boss.state === "range") {
+                boss.vx *= 0.5; // Il freine pour lancer
+                if (boss.actionTimer === 5) {
+                    bossAttackRange();
+                    boss.attackCooldown = 60;
+                }
+            }
+
+            boss.vx *= friction; boss.x += boss.vx;
+            boss.vy += gravity; boss.y += boss.vy;
+
+            // --- PROJECTILES (Pierres) ---
+            for (let i = 0; i < projectiles.length; i++) {
+                let p = projectiles[i];
+                p.x += p.vx;
+                if (player.invulnerable === 0 && checkRectCollision(p, player)) {
+                    applyKnockback(player, p.vx > 0 ? 1 : -1, 10);
+                    loseLife();
+                    projectiles.splice(i, 1); i--;
+                    continue;
+                }
+                if (p.x < 0 || p.x > canvas.width) { projectiles.splice(i, 1); i--; }
+            }
+
+            checkPlatform(player); checkPlatform(boss);
+
+            if (boss.y > canvas.height || boss.hp <= 0) victory = true;
+
+            if (player.y > canvas.height) {
+                loseLife();
+                if (player.lives > 0) {
+                    player.x = canvas.width / 2 - player.width / 2;
+                    player.y = 50;
+                    player.vx = 0;
+                    player.vy = 0;
+                }
+            }
+        }
+
+        // --- ATTAQUES ---
+        function playerAttack() {
+            const hitbox = { x: player.direction === 1 ? player.x + player.width : player.x - 40, y: player.y + 10, width: 40, height: 20 };
+            if (checkRectCollision(hitbox, boss)) {
+                if (Math.random() < 0.2) {
+                    boss.vx = -boss.direction * 15; boss.state = "idle";
+                } else {
+                    applyKnockback(boss, player.direction, 12);
+                    boss.hp--;
+                }
+            }
+        }
+
+        function bossAttackMelee() {
+            const hitbox = { x: boss.direction === 1 ? boss.x + boss.width : boss.x - 50, y: boss.y + 10, width: 50, height: 40 };
+            if (player.invulnerable === 0 && checkRectCollision(hitbox, player)) {
+                applyKnockback(player, boss.direction, 15);
+                loseLife();
+            }
+        }
+
+        function bossAttackRange() {
+            // Lancement d'une pierre grise
+            projectiles.push({ x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20, y: boss.y + 20, width: 25, height: 15, vx: boss.direction * 10 });
+        }
+
+        function applyKnockback(target, direction, force) {
+            target.vx = force * direction;
+            target.vy = -6;
+            target.isGrounded = false;
+        }
+
+        function checkRectCollision(r1, r2) { return r1.x < r2.x + r2.width && r1.x + r1.width > r2.x && r1.y < r2.y + r2.height && r1.y + r1.height > r2.y; }
+
+        function checkPlatform(ent) {
+            if (ent.vy > 0 && ent.x < platform.x + platform.width && ent.x + ent.width > platform.x &&
+                ent.y + ent.height >= platform.y && ent.y + ent.height <= platform.y + ent.vy + 2) {
+                ent.isGrounded = true; ent.vy = 0; ent.y = platform.y - ent.height;
+            }
+        }
+
+        // --- AFFICHAGE ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Plateforme
+            ctx.fillStyle = "#95a5a6"; ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+
+            // Projectiles (Pierres)
+            ctx.fillStyle = "#7f8c8d";
+            projectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
+
+            // Boss
+            ctx.fillStyle = boss.state === "melee" && boss.actionTimer > 5 ? "#e67e22" : "#c0392b"; // Devient orange avant de taper
+            ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+            if (boss.isAttacking) {
+                ctx.fillStyle = "rgba(231, 76, 60, 0.8)";
+                ctx.fillRect(boss.direction === 1 ? boss.x + boss.width : boss.x - 50, boss.y + 10, 50, 40);
+            }
+
+            // Joueur
+            if (player.invulnerable === 0 || player.invulnerable % 8 < 4) {
+                ctx.fillStyle = "#3498db"; ctx.fillRect(player.x, player.y, player.width, player.height);
+            }
+            if (player.isAttacking) {
+                ctx.fillStyle = "rgba(52, 152, 219, 0.8)";
+                ctx.fillRect(player.direction === 1 ? player.x + player.width : player.x - 40, player.y + 10, 40, 20);
+            }
+
+            // Vies Joueur
+            ctx.fillStyle = "white"; ctx.font = "20px Arial";
+            ctx.fillText("❤️ Vies : " + player.lives, 20, 30);
+
+            // PV Boss
+            ctx.fillStyle = "#e74c3c"; ctx.font = "20px Arial";
+            ctx.fillText("Boss : " + boss.hp + "/" + boss.maxHp + " PV", canvas.width - 180, 30);
+
+            if (victory) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#f1c40f"; ctx.font = "40px Arial"; ctx.fillText("BOSS VAINCU !", 250, 180);
+                ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour rejouer)", 300, 220);
+            }
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white"; ctx.font = "40px Arial"; ctx.fillText("DÉFAITE...", 300, 180);
+                ctx.fillStyle = "#e74c3c"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour réessayer)", 290, 220);
+            }
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+
+<div id="orientationWarning">
+    <div style="font-size: 50px; margin-bottom: 20px;">🔄</div>
+    <div>Veuillez tourner votre téléphone<br>en mode paysage pour jouer !</div>
+</div>
+
+</html>
