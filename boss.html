@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Niveau 5 : Le Boss Final (Version Complète)</title>
+    <title>Niveau 5 : Le Boss Final (Vrai Plein Écran)</title>
     <style>
         body {
             margin: 0;
@@ -13,15 +13,15 @@
             color: white;
             font-family: Arial, sans-serif;
             text-align: center;
-            overflow: hidden; /* Empêche le scroll accidentel */
+            overflow: hidden;
             touch-action: none;
             display: flex;
             flex-direction: column;
-            height: 100dvh; /* S'adapte à la barre de navigation mobile */
-            justify-content: space-between;
+            height: 100dvh;
+            justify-content: flex-start;
         }
 
-        h2 { margin: 5px 0; font-size: 18px; }
+        h2 { margin: 10px 0 5px 0; font-size: 18px; }
         
         #topBar {
             display: flex;
@@ -42,7 +42,7 @@
         }
         #fullscreenBtn:active { background-color: #2980b9; }
 
-        .instructions { font-size: 12px; color: #bdc3c7; }
+        .instructions { font-size: 12px; color: #bdc3c7; margin-bottom: 10px; }
 
         #mainContent {
             display: flex;
@@ -51,6 +51,7 @@
             width: 100%;
         }
 
+        /* Le conteneur qui va passer en plein écran */
         #gameContainer {
             position: relative;
             width: 100%;
@@ -58,18 +59,19 @@
             margin: 0 auto;
             display: flex;
             flex-direction: column;
-            flex-grow: 1; /* Prend l'espace restant */
+            flex-grow: 1; 
+            background-color: transparent;
         }
 
         canvas {
             background-color: #87CEEB;
             display: block;
             width: 100%;
-            flex-grow: 1;
-            max-height: 55vh; 
-            object-fit: contain; /* Garde les proportions */
+            height: 100%; /* Prend toute la place restante */
+            object-fit: contain; /* Garde les bonnes proportions (ratio) sans s'écraser */
             border-bottom: 4px solid #34495e;
             cursor: pointer;
+            flex-grow: 1;
         }
 
         #controls {
@@ -77,7 +79,7 @@
             justify-content: space-between;
             padding: 10px;
             background: #1a252f;
-            flex-shrink: 0; /* Empêche les boutons de se faire écraser */
+            flex-shrink: 0; /* Empêche les boutons de s'écraser */
         }
 
         .d-pad,
@@ -126,14 +128,28 @@
             #mainContent { display: none !important; }
         }
 
-        /* SECours SAFARI iOS */
+        /* --- STYLES PLEIN ÉCRAN NATIONAUX ET IOS --- */
+        #gameContainer:fullscreen {
+            background-color: black;
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+        }
+        #gameContainer:-webkit-full-screen {
+            background-color: black;
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+        }
+
         .pseudo-fullscreen {
             position: fixed !important;
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100vw !important;
             height: 100dvh !important;
+            max-width: none !important;
             z-index: 9999;
-            background-color: #2c3e50;
+            background-color: black !important;
             margin: 0;
         }
     </style>
@@ -149,7 +165,7 @@
     <div id="mainContent">
         <div id="topBar">
             <h2>Le Schweissdissi Enragé</h2>
-            <button id="fullscreenBtn">📱 Plein Écran</button>
+            <button id="fullscreenBtn">📱 Jouer en Plein Écran</button>
         </div>
         <div class="instructions">Frappe-le 15 fois ou éjecte-le ! Attention aux pierres.</div>
 
@@ -172,28 +188,27 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // --- GESTION DU PLEIN ÉCRAN (Compatible Safari iOS) ---
+        // --- GESTION DU PLEIN ÉCRAN ---
         const fullscreenBtn = document.getElementById("fullscreenBtn");
-        const mainContent = document.getElementById("mainContent");
+        const gameContainer = document.getElementById("gameContainer");
+        const topBar = document.getElementById("topBar");
+        const instructions = document.querySelector(".instructions");
 
         fullscreenBtn.addEventListener("click", () => {
-            const docElm = document.documentElement;
-            
-            // Tente l'API standard
-            if (docElm.requestFullscreen) {
-                docElm.requestFullscreen();
-            } 
-            // Tente l'API Webkit
-            else if (docElm.webkitRequestFullscreen) { 
-                docElm.webkitRequestFullscreen();
-            } 
-            // Secours ultime pour iPhone
-            else {
-                mainContent.classList.add("pseudo-fullscreen");
+            // Demande le plein écran UNIQUEMENT sur la zone de jeu
+            if (gameContainer.requestFullscreen) {
+                gameContainer.requestFullscreen();
+            } else if (gameContainer.webkitRequestFullscreen) { 
+                gameContainer.webkitRequestFullscreen();
+            } else {
+                gameContainer.classList.add("pseudo-fullscreen");
                 window.scrollTo(0, 0);
             }
             
-            fullscreenBtn.style.display = "none";
+            // Masque le titre et les instructions derrière pour faire propre
+            topBar.style.display = "none";
+            instructions.style.display = "none";
+            document.body.style.backgroundColor = "black";
         });
 
         // --- CONTRÔLES ---
