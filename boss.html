@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Niveau 5 : Le Boss Final (Responsive Mobile)</title>
+    <title>Niveau 5 : Le Boss Final (Plein Écran & Accueil)</title>
     <style>
         body {
             margin: 0;
@@ -54,12 +54,31 @@
 
         /* LE CONTENEUR PRINCIPAL DU JEU */
         #gameContainer {
+            position: relative;
             display: flex;
             flex-direction: column;
             width: 100%;
             flex-grow: 1; /* Prend tout l'espace disponible */
             background-color: #87CEEB; /* Couleur du ciel pour masquer les bandes noires */
         }
+
+        /* BOUTON POUR QUITTER LE PLEIN ÉCRAN (Caché par défaut) */
+        #exitFullscreenBtn {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background-color: rgba(231, 76, 60, 0.9);
+            color: white;
+            border: 2px solid #c0392b;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        #exitFullscreenBtn:active { background-color: rgba(192, 57, 43, 1); transform: scale(0.95); }
 
         /* LE WRAPPER DU CANVAS */
         #canvasWrapper {
@@ -68,7 +87,7 @@
             align-items: center;
             width: 100%;
             flex-grow: 1;
-            min-height: 0; /* CRUCIAL : Empêche le canvas de pousser les boutons hors de l'écran */
+            min-height: 0; /* Empêche le canvas de pousser les boutons hors de l'écran */
         }
 
         canvas {
@@ -85,11 +104,10 @@
             justify-content: space-between;
             align-items: center;
             padding: 10px 5%;
-            /* Gère l'espace sécurisé en bas sur les iPhone récents */
-            padding-bottom: max(10px, env(safe-area-inset-bottom)); 
+            padding-bottom: max(10px, env(safe-area-inset-bottom)); /* Gère l'espace sécurisé sur iPhone */
             background: #1a252f;
-            border-top: 4px solid #34495e; /* La ligne de sol fait toute la largeur */
-            flex-shrink: 0; /* Empêche les boutons de s'écraser */
+            border-top: 4px solid #34495e; 
+            flex-shrink: 0; 
             z-index: 10;
         }
 
@@ -112,7 +130,7 @@
             justify-content: center;
             user-select: none;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent; /* Retire le carré bleu au clic sur Android */
+            -webkit-tap-highlight-color: transparent; 
         }
 
         .btn:active { background-color: #e74c3c; transform: scale(0.95); }
@@ -139,7 +157,7 @@
             #mainContent { display: none !important; }
         }
 
-        /* GESTION DU PLEIN ÉCRAN */
+        /* GESTION DU PLEIN ÉCRAN NATIVE ET CSS */
         #gameContainer:fullscreen, #gameContainer:-webkit-full-screen, .pseudo-fullscreen {
             position: fixed !important;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -168,6 +186,8 @@
 
         <div id="gameContainer">
             
+            <button id="exitFullscreenBtn">❌ Quitter</button>
+
             <div id="canvasWrapper">
                 <canvas id="gameCanvas" width="800" height="400"></canvas>
             </div>
@@ -190,26 +210,71 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // --- GESTION DU PLEIN ÉCRAN ---
+        // --- GESTION DE L'INTERFACE ET DU PLEIN ÉCRAN ---
         const fullscreenBtn = document.getElementById("fullscreenBtn");
+        const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
         const gameContainer = document.getElementById("gameContainer");
         const topBar = document.getElementById("topBar");
         const instructions = document.querySelector(".instructions");
 
+        // Bouton "Entrer en Plein Écran"
         fullscreenBtn.addEventListener("click", () => {
             if (gameContainer.requestFullscreen) {
                 gameContainer.requestFullscreen();
             } else if (gameContainer.webkitRequestFullscreen) { 
                 gameContainer.webkitRequestFullscreen();
             } else {
+                // Version Secours iOS Safari
                 gameContainer.classList.add("pseudo-fullscreen");
                 window.scrollTo(0, 0);
             }
             
+            // Masque la page d'accueil et affiche le bouton Quitter
             topBar.style.display = "none";
             instructions.style.display = "none";
-            document.body.style.backgroundColor = "#87CEEB"; // Prolonge le ciel
+            document.body.style.backgroundColor = "#87CEEB";
+            exitFullscreenBtn.style.display = "block";
         });
+
+        // Bouton "Quitter le Plein Écran"
+        exitFullscreenBtn.addEventListener("click", () => {
+            if (document.exitFullscreen) {
+                document.exitFullscreen(); // Déclenchera l'événement fullscreenchange
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else {
+                // Secours iOS Safari : on force manuellement la logique de sortie
+                exitFullscreenLogic();
+            }
+        });
+
+        // Écouteur universel (détecte la touche "Echap" ou la sortie native)
+        document.addEventListener("fullscreenchange", checkFullscreen);
+        document.addEventListener("webkitfullscreenchange", checkFullscreen);
+
+        function checkFullscreen() {
+            // S'il n'y a plus d'élément en plein écran, c'est qu'on vient d'en sortir
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                exitFullscreenLogic();
+            }
+        }
+
+        // Fonction pour réafficher la page d'accueil proprement
+        function exitFullscreenLogic() {
+            gameContainer.classList.remove("pseudo-fullscreen");
+            
+            // Restaure le design d'accueil
+            topBar.style.display = "flex";
+            instructions.style.display = "block";
+            document.body.style.backgroundColor = "#2c3e50";
+            
+            // Gère l'affichage des boutons
+            exitFullscreenBtn.style.display = "none";
+            fullscreenBtn.style.display = "block";
+            
+            // Réinitialise la partie quand on quitte pour avoir un jeu propre
+            resetGame();
+        }
 
         // --- CONTRÔLES ---
         const input = { left: false, right: false, jump: false, attack: false };
@@ -420,7 +485,6 @@
 
         // --- AFFICHAGE ---
         function draw() {
-            // Nettoie l'écran avec la couleur ciel (au cas où, bien que le CSS le fasse déjà)
             ctx.fillStyle = "#87CEEB"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
