@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Niveau 5 : Le Boss Final (Vrai Plein Écran)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Niveau 5 : Le Boss Final (Responsive Mobile)</title>
     <style>
         body {
             margin: 0;
@@ -13,15 +13,15 @@
             color: white;
             font-family: Arial, sans-serif;
             text-align: center;
-            overflow: hidden;
-            touch-action: none;
+            overflow: hidden; /* Coupe tout dépassement */
+            touch-action: none; /* Désactive le zoom et le scroll natif */
             display: flex;
             flex-direction: column;
-            height: 100dvh;
-            justify-content: flex-start;
+            width: 100vw;
+            height: 100dvh; /* S'adapte dynamiquement à la barre du navigateur */
         }
 
-        h2 { margin: 10px 0 5px 0; font-size: 18px; }
+        h2 { margin: 10px 0 5px 0; font-size: 18px; flex-shrink: 0; }
         
         #topBar {
             display: flex;
@@ -29,6 +29,7 @@
             align-items: center;
             gap: 15px;
             margin-bottom: 5px;
+            flex-shrink: 0;
         }
 
         #fullscreenBtn {
@@ -42,50 +43,59 @@
         }
         #fullscreenBtn:active { background-color: #2980b9; }
 
-        .instructions { font-size: 12px; color: #bdc3c7; margin-bottom: 10px; }
+        .instructions { font-size: 12px; color: #bdc3c7; margin-bottom: 5px; flex-shrink: 0; }
 
         #mainContent {
             display: flex;
             flex-direction: column;
-            height: 100%;
             width: 100%;
+            height: 100%;
         }
 
-        /* Le conteneur qui va passer en plein écran */
+        /* LE CONTENEUR PRINCIPAL DU JEU */
         #gameContainer {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
             display: flex;
             flex-direction: column;
-            flex-grow: 1; 
-            background-color: transparent;
+            width: 100%;
+            flex-grow: 1; /* Prend tout l'espace disponible */
+            background-color: #87CEEB; /* Couleur du ciel pour masquer les bandes noires */
+        }
+
+        /* LE WRAPPER DU CANVAS */
+        #canvasWrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            flex-grow: 1;
+            min-height: 0; /* CRUCIAL : Empêche le canvas de pousser les boutons hors de l'écran */
         }
 
         canvas {
-            background-color: #87CEEB;
             display: block;
-            width: 100%;
-            height: 100%; /* Prend toute la place restante */
-            object-fit: contain; /* Garde les bonnes proportions (ratio) sans s'écraser */
-            border-bottom: 4px solid #34495e;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* Conserve le ratio 800x400 sans déformation */
             cursor: pointer;
-            flex-grow: 1;
         }
 
+        /* LA ZONE DES BOUTONS */
         #controls {
             display: flex;
             justify-content: space-between;
-            padding: 10px;
+            align-items: center;
+            padding: 10px 5%;
+            /* Gère l'espace sécurisé en bas sur les iPhone récents */
+            padding-bottom: max(10px, env(safe-area-inset-bottom)); 
             background: #1a252f;
+            border-top: 4px solid #34495e; /* La ligne de sol fait toute la largeur */
             flex-shrink: 0; /* Empêche les boutons de s'écraser */
+            z-index: 10;
         }
 
-        .d-pad,
-        .action-buttons {
+        .d-pad, .action-buttons {
             display: flex;
-            gap: 10px;
+            gap: 15px;
         }
 
         .btn {
@@ -94,7 +104,7 @@
             border-radius: 50%;
             width: 60px;
             height: 60px;
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
             color: white;
             display: flex;
@@ -102,9 +112,10 @@
             justify-content: center;
             user-select: none;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* Retire le carré bleu au clic sur Android */
         }
 
-        .btn:active { background-color: #e74c3c; }
+        .btn:active { background-color: #e74c3c; transform: scale(0.95); }
         .btn-attack { background-color: #e67e22; border-color: #d35400; }
 
         /* OVERLAY MODE PAYSAGE */
@@ -128,28 +139,14 @@
             #mainContent { display: none !important; }
         }
 
-        /* --- STYLES PLEIN ÉCRAN NATIONAUX ET IOS --- */
-        #gameContainer:fullscreen {
-            background-color: black;
-            width: 100vw;
-            height: 100vh;
-            max-width: none;
-        }
-        #gameContainer:-webkit-full-screen {
-            background-color: black;
-            width: 100vw;
-            height: 100vh;
-            max-width: none;
-        }
-
-        .pseudo-fullscreen {
+        /* GESTION DU PLEIN ÉCRAN */
+        #gameContainer:fullscreen, #gameContainer:-webkit-full-screen, .pseudo-fullscreen {
             position: fixed !important;
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100vw !important;
             height: 100dvh !important;
             max-width: none !important;
             z-index: 9999;
-            background-color: black !important;
             margin: 0;
         }
     </style>
@@ -170,7 +167,11 @@
         <div class="instructions">Frappe-le 15 fois ou éjecte-le ! Attention aux pierres.</div>
 
         <div id="gameContainer">
-            <canvas id="gameCanvas" width="800" height="400"></canvas>
+            
+            <div id="canvasWrapper">
+                <canvas id="gameCanvas" width="800" height="400"></canvas>
+            </div>
+            
             <div id="controls">
                 <div class="d-pad">
                     <div class="btn" id="btnLeft">⬅️</div>
@@ -181,6 +182,7 @@
                     <div class="btn btn-attack" id="btnAttack">👊</div>
                 </div>
             </div>
+            
         </div>
     </div>
 
@@ -195,7 +197,6 @@
         const instructions = document.querySelector(".instructions");
 
         fullscreenBtn.addEventListener("click", () => {
-            // Demande le plein écran UNIQUEMENT sur la zone de jeu
             if (gameContainer.requestFullscreen) {
                 gameContainer.requestFullscreen();
             } else if (gameContainer.webkitRequestFullscreen) { 
@@ -205,10 +206,9 @@
                 window.scrollTo(0, 0);
             }
             
-            // Masque le titre et les instructions derrière pour faire propre
             topBar.style.display = "none";
             instructions.style.display = "none";
-            document.body.style.backgroundColor = "black";
+            document.body.style.backgroundColor = "#87CEEB"; // Prolonge le ciel
         });
 
         // --- CONTRÔLES ---
@@ -420,7 +420,9 @@
 
         // --- AFFICHAGE ---
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Nettoie l'écran avec la couleur ciel (au cas où, bien que le CSS le fasse déjà)
+            ctx.fillStyle = "#87CEEB"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Plateforme
             ctx.fillStyle = "#95a5a6"; ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
@@ -447,11 +449,11 @@
             }
 
             // Textes UI
-            ctx.fillStyle = "white"; ctx.font = "20px Arial";
-            ctx.fillText("❤️ Vies : " + player.lives, 20, 30);
+            ctx.fillStyle = "white"; ctx.font = "bold 20px Arial";
+            ctx.fillText("❤️ Vies : " + player.lives, 20, 35);
 
-            ctx.fillStyle = "#e74c3c"; ctx.font = "20px Arial";
-            ctx.fillText("Boss : " + boss.hp + "/" + boss.maxHp + " PV", canvas.width - 180, 30);
+            ctx.fillStyle = "#e74c3c"; ctx.font = "bold 20px Arial";
+            ctx.fillText("Boss : " + boss.hp + "/" + boss.maxHp + " PV", canvas.width - 200, 35);
 
             if (victory) {
                 ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
