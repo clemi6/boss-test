@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Niveau 5 : Le Boss (IA Améliorée)</title>
+    <title>Niveau 5 : Le Boss (Plein Écran)</title>
     <style>
         body {
             margin: 0;
@@ -14,7 +14,46 @@
             font-family: Arial, sans-serif;
             text-align: center;
             overflow: hidden;
+            /* Empêche le scroll accidentel */
             touch-action: none;
+            /* NOUVEAU : Flexbox pour forcer l'adaptation à l'écran réel */
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            /* dvh s'adapte à la barre de navigation mobile */
+            justify-content: space-between;
+        }
+
+        h2 {
+            margin: 5px 0;
+            font-size: 18px;
+        }
+
+        #topBar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 5px;
+        }
+
+        #fullscreenBtn {
+            background-color: #3498db;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #fullscreenBtn:active {
+            background-color: #2980b9;
+        }
+
+        .instructions {
+            font-size: 12px;
+            color: #bdc3c7;
         }
 
         #gameContainer {
@@ -22,12 +61,21 @@
             width: 100%;
             max-width: 800px;
             margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            /* Prend l'espace restant */
         }
 
         canvas {
             background-color: #87CEEB;
             display: block;
             width: 100%;
+            /* NOUVEAU : Le canvas s'écrase un peu pour laisser la place aux boutons */
+            flex-grow: 1;
+            max-height: 55vh;
+            object-fit: contain;
+            /* Garde les proportions */
             border-bottom: 4px solid #34495e;
             cursor: pointer;
         }
@@ -37,6 +85,8 @@
             justify-content: space-between;
             padding: 10px;
             background: #1a252f;
+            flex-shrink: 0;
+            /* Empêche les boutons de se faire écraser */
         }
 
         .d-pad,
@@ -70,21 +120,14 @@
             border-color: #d35400;
         }
 
-        .instructions {
-            font-size: 14px;
-            margin-top: 5px;
-            color: #bdc3c7;
-        }
-
-        /* --- OVERLAY MODE PAYSAGE --- */
+        /* OVERLAY MODE PAYSAGE */
         #orientationWarning {
             display: none;
-            /* Caché par défaut */
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
-            height: 100vh;
+            height: 100dvh;
             background-color: #1a252f;
             color: #f1c40f;
             z-index: 9999;
@@ -96,18 +139,13 @@
             font-weight: bold;
         }
 
-        /* Si le téléphone est tenu à la verticale (Portrait) */
         @media screen and (orientation: portrait) {
             #orientationWarning {
                 display: flex;
-                /* Affiche l'écran de blocage */
             }
 
-            #gameContainer,
-            h2,
-            .instructions {
+            #mainContent {
                 display: none !important;
-                /* Cache le jeu pour éviter les bugs d'affichage */
             }
         }
     </style>
@@ -115,25 +153,49 @@
 
 <body>
 
-    <h2>Boss : Le Schweissdissi Enragé</h2>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
-        <div id="controls">
-            <div class="d-pad">
-                <div class="btn" id="btnLeft">⬅️</div>
-                <div class="btn" id="btnRight">➡️</div>
-            </div>
-            <div class="action-buttons">
-                <div class="btn" id="btnJump">⬆️</div>
-                <div class="btn btn-attack" id="btnAttack">👊</div>
+    <div id="orientationWarning">
+        <div style="font-size: 50px; margin-bottom: 20px;">🔄</div>
+        <div>Veuillez tourner votre téléphone<br>en mode paysage pour jouer !</div>
+    </div>
+
+    <div id="mainContent" style="display: flex; flex-direction: column; height: 100%; width: 100%;">
+        <div id="topBar">
+            <h2>Le Schweissdissi</h2>
+            <button id="fullscreenBtn">📱 Plein Écran</button>
+        </div>
+        <div class="instructions">Frappe-le 15 fois ou éjecte-le !</div>
+
+        <div id="gameContainer">
+            <canvas id="gameCanvas" width="800" height="400"></canvas>
+            <div id="controls">
+                <div class="d-pad">
+                    <div class="btn" id="btnLeft">⬅️</div>
+                    <div class="btn" id="btnRight">➡️</div>
+                </div>
+                <div class="action-buttons">
+                    <div class="btn" id="btnJump">⬆️</div>
+                    <div class="btn btn-attack" id="btnAttack">👊</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="instructions">Éjecte-le ou réduis ses PV à zéro ! Attention aux pierres.</div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+
+        // --- GESTION DU PLEIN ÉCRAN ---
+        const fullscreenBtn = document.getElementById("fullscreenBtn");
+        fullscreenBtn.addEventListener("click", () => {
+            const docElm = document.documentElement;
+            if (docElm.requestFullscreen) {
+                docElm.requestFullscreen();
+            } else if (docElm.webkitRequestFullscreen) { /* Safari Mobile */
+                docElm.webkitRequestFullscreen();
+            }
+            // Cache le bouton une fois en plein écran
+            fullscreenBtn.style.display = "none";
+        });
 
         // Contrôles
         const input = { left: false, right: false, jump: false, attack: false };
@@ -231,48 +293,40 @@
                 playerAttack();
             }
 
-            // --- IA DU BOSS (CORRIGÉE) ---
+            // --- IA DU BOSS ---
             let dist = player.x - boss.x;
-            boss.direction = dist > 0 ? 1 : -1; // Se tourne toujours vers le joueur
+            boss.direction = dist > 0 ? 1 : -1;
             if (boss.attackCooldown > 0) boss.attackCooldown--;
             boss.actionTimer--;
 
-            // Prise de décision (nouvelle action quand le timer tombe à zéro)
             if (boss.actionTimer <= 0) {
-                boss.actionTimer = 40 + Math.random() * 50; // Choix d'action toutes les ~1.5 secondes
+                boss.actionTimer = 40 + Math.random() * 50;
                 let absDist = Math.abs(dist);
 
                 if (absDist < 80 && boss.attackCooldown === 0) {
-                    boss.state = "melee"; // Corps à corps
-                    boss.actionTimer = 30;
+                    boss.state = "melee"; boss.actionTimer = 30;
                 } else if (absDist > 150 && boss.attackCooldown === 0 && Math.random() < 0.6) {
-                    boss.state = "range"; // Jet de pierre (60% de chance s'il est assez loin)
-                    boss.actionTimer = 25;
+                    boss.state = "range"; boss.actionTimer = 25;
                 } else {
-                    // S'il n'attaque pas, il choisit entre marcher vers toi ou faire une pause
-                    if (Math.random() > 0.5) {
-                        boss.state = "chase"; // Il avance
-                    } else {
-                        boss.state = "idle";  // Il s'arrête
-                    }
+                    if (Math.random() > 0.5) boss.state = "chase";
+                    else boss.state = "idle";
                 }
             }
 
-            // Exécution de l'état actuel du boss
             boss.isAttacking = false;
             if (boss.state === "chase" && Math.abs(boss.vx) < 4) {
                 boss.vx = boss.direction * boss.speed;
             } else if (boss.state === "idle") {
-                boss.vx *= friction; // Arrêt progressif
+                boss.vx *= friction;
             } else if (boss.state === "melee") {
-                boss.vx *= 0.5; // Il freine avant de taper
+                boss.vx *= 0.5;
                 if (boss.actionTimer === 5) {
                     boss.isAttacking = true;
                     bossAttackMelee();
                     boss.attackCooldown = 50;
                 }
             } else if (boss.state === "range") {
-                boss.vx *= 0.5; // Il freine pour lancer
+                boss.vx *= 0.5;
                 if (boss.actionTimer === 5) {
                     bossAttackRange();
                     boss.attackCooldown = 60;
@@ -282,7 +336,7 @@
             boss.vx *= friction; boss.x += boss.vx;
             boss.vy += gravity; boss.y += boss.vy;
 
-            // --- PROJECTILES (Pierres) ---
+            // --- PROJECTILES ---
             for (let i = 0; i < projectiles.length; i++) {
                 let p = projectiles[i];
                 p.x += p.vx;
@@ -332,7 +386,6 @@
         }
 
         function bossAttackRange() {
-            // Lancement d'une pierre grise
             projectiles.push({ x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20, y: boss.y + 20, width: 25, height: 15, vx: boss.direction * 10 });
         }
 
@@ -355,22 +408,18 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Plateforme
             ctx.fillStyle = "#95a5a6"; ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
 
-            // Projectiles (Pierres)
             ctx.fillStyle = "#7f8c8d";
             projectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
 
-            // Boss
-            ctx.fillStyle = boss.state === "melee" && boss.actionTimer > 5 ? "#e67e22" : "#c0392b"; // Devient orange avant de taper
+            ctx.fillStyle = boss.state === "melee" && boss.actionTimer > 5 ? "#e67e22" : "#c0392b";
             ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
             if (boss.isAttacking) {
                 ctx.fillStyle = "rgba(231, 76, 60, 0.8)";
                 ctx.fillRect(boss.direction === 1 ? boss.x + boss.width : boss.x - 50, boss.y + 10, 50, 40);
             }
 
-            // Joueur
             if (player.invulnerable === 0 || player.invulnerable % 8 < 4) {
                 ctx.fillStyle = "#3498db"; ctx.fillRect(player.x, player.y, player.width, player.height);
             }
@@ -379,11 +428,9 @@
                 ctx.fillRect(player.direction === 1 ? player.x + player.width : player.x - 40, player.y + 10, 40, 20);
             }
 
-            // Vies Joueur
             ctx.fillStyle = "white"; ctx.font = "20px Arial";
             ctx.fillText("❤️ Vies : " + player.lives, 20, 30);
 
-            // PV Boss
             ctx.fillStyle = "#e74c3c"; ctx.font = "20px Arial";
             ctx.fillText("Boss : " + boss.hp + "/" + boss.maxHp + " PV", canvas.width - 180, 30);
 
@@ -403,10 +450,5 @@
         loop();
     </script>
 </body>
-
-<div id="orientationWarning">
-    <div style="font-size: 50px; margin-bottom: 20px;">🔄</div>
-    <div>Veuillez tourner votre téléphone<br>en mode paysage pour jouer !</div>
-</div>
 
 </html>
