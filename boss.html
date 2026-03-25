@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Niveau 5 : Le Boss Final (Plein Écran & Accueil)</title>
+    <title>Niveau 5 : Le Boss Final (Collisions & Équilibrage)</title>
     <style>
         body {
             margin: 0;
@@ -13,12 +13,12 @@
             color: white;
             font-family: Arial, sans-serif;
             text-align: center;
-            overflow: hidden; /* Coupe tout dépassement */
-            touch-action: none; /* Désactive le zoom et le scroll natif */
+            overflow: hidden;
+            touch-action: none;
             display: flex;
             flex-direction: column;
             width: 100vw;
-            height: 100dvh; /* S'adapte dynamiquement à la barre du navigateur */
+            height: 100dvh;
         }
 
         h2 { margin: 10px 0 5px 0; font-size: 18px; flex-shrink: 0; }
@@ -58,11 +58,10 @@
             display: flex;
             flex-direction: column;
             width: 100%;
-            flex-grow: 1; /* Prend tout l'espace disponible */
-            background-color: #87CEEB; /* Couleur du ciel pour masquer les bandes noires */
+            flex-grow: 1;
+            background-color: #87CEEB;
         }
 
-        /* BOUTON POUR QUITTER LE PLEIN ÉCRAN (Caché par défaut) */
         #exitFullscreenBtn {
             display: none;
             position: absolute;
@@ -80,31 +79,29 @@
         }
         #exitFullscreenBtn:active { background-color: rgba(192, 57, 43, 1); transform: scale(0.95); }
 
-        /* LE WRAPPER DU CANVAS */
         #canvasWrapper {
             display: flex;
             justify-content: center;
             align-items: center;
             width: 100%;
             flex-grow: 1;
-            min-height: 0; /* Empêche le canvas de pousser les boutons hors de l'écran */
+            min-height: 0;
         }
 
         canvas {
             display: block;
             max-width: 100%;
             max-height: 100%;
-            object-fit: contain; /* Conserve le ratio 800x400 sans déformation */
+            object-fit: contain;
             cursor: pointer;
         }
 
-        /* LA ZONE DES BOUTONS */
         #controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 10px 5%;
-            padding-bottom: max(10px, env(safe-area-inset-bottom)); /* Gère l'espace sécurisé sur iPhone */
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
             background: #1a252f;
             border-top: 4px solid #34495e; 
             flex-shrink: 0; 
@@ -136,7 +133,6 @@
         .btn:active { background-color: #e74c3c; transform: scale(0.95); }
         .btn-attack { background-color: #e67e22; border-color: #d35400; }
 
-        /* OVERLAY MODE PAYSAGE */
         #orientationWarning {
             display: none;
             position: fixed;
@@ -157,7 +153,6 @@
             #mainContent { display: none !important; }
         }
 
-        /* GESTION DU PLEIN ÉCRAN NATIVE ET CSS */
         #gameContainer:fullscreen, #gameContainer:-webkit-full-screen, .pseudo-fullscreen {
             position: fixed !important;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -182,10 +177,9 @@
             <h2>Le Schweissdissi Enragé</h2>
             <button id="fullscreenBtn">📱 Jouer en Plein Écran</button>
         </div>
-        <div class="instructions">Frappe-le 15 fois ou éjecte-le ! Attention aux pierres.</div>
+        <div class="instructions">Frappe-le 10 fois ou éjecte-le !</div>
 
         <div id="gameContainer">
-            
             <button id="exitFullscreenBtn">❌ Quitter</button>
 
             <div id="canvasWrapper">
@@ -202,7 +196,6 @@
                     <div class="btn btn-attack" id="btnAttack">👊</div>
                 </div>
             </div>
-            
         </div>
     </div>
 
@@ -210,69 +203,54 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // --- GESTION DE L'INTERFACE ET DU PLEIN ÉCRAN ---
+        // --- GESTION DU PLEIN ÉCRAN ---
         const fullscreenBtn = document.getElementById("fullscreenBtn");
         const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
         const gameContainer = document.getElementById("gameContainer");
         const topBar = document.getElementById("topBar");
         const instructions = document.querySelector(".instructions");
 
-        // Bouton "Entrer en Plein Écran"
         fullscreenBtn.addEventListener("click", () => {
             if (gameContainer.requestFullscreen) {
                 gameContainer.requestFullscreen();
             } else if (gameContainer.webkitRequestFullscreen) { 
                 gameContainer.webkitRequestFullscreen();
             } else {
-                // Version Secours iOS Safari
                 gameContainer.classList.add("pseudo-fullscreen");
                 window.scrollTo(0, 0);
             }
-            
-            // Masque la page d'accueil et affiche le bouton Quitter
             topBar.style.display = "none";
             instructions.style.display = "none";
             document.body.style.backgroundColor = "#87CEEB";
             exitFullscreenBtn.style.display = "block";
         });
 
-        // Bouton "Quitter le Plein Écran"
         exitFullscreenBtn.addEventListener("click", () => {
             if (document.exitFullscreen) {
-                document.exitFullscreen(); // Déclenchera l'événement fullscreenchange
+                document.exitFullscreen();
             } else if (document.webkitExitFullscreen) {
                 document.webkitExitFullscreen();
             } else {
-                // Secours iOS Safari : on force manuellement la logique de sortie
                 exitFullscreenLogic();
             }
         });
 
-        // Écouteur universel (détecte la touche "Echap" ou la sortie native)
         document.addEventListener("fullscreenchange", checkFullscreen);
         document.addEventListener("webkitfullscreenchange", checkFullscreen);
 
         function checkFullscreen() {
-            // S'il n'y a plus d'élément en plein écran, c'est qu'on vient d'en sortir
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 exitFullscreenLogic();
             }
         }
 
-        // Fonction pour réafficher la page d'accueil proprement
         function exitFullscreenLogic() {
             gameContainer.classList.remove("pseudo-fullscreen");
-            
-            // Restaure le design d'accueil
             topBar.style.display = "flex";
             instructions.style.display = "block";
             document.body.style.backgroundColor = "#2c3e50";
-            
-            // Gère l'affichage des boutons
             exitFullscreenBtn.style.display = "none";
             fullscreenBtn.style.display = "block";
-            
-            // Réinitialise la partie quand on quitte pour avoir un jeu propre
             resetGame();
         }
 
@@ -311,26 +289,26 @@
         const platform = { x: 100, y: 300, width: 600, height: 20 };
         const projectiles = [];
 
-        // Joueur
+        // Joueur (Équilibrage : 5 vies)
         const player = {
             x: 200, y: 100, width: 40, height: 40,
             vx: 0, vy: 0, speed: 5, jumpPower: -12,
             isGrounded: false, direction: 1,
             attackCooldown: 0, isAttacking: false,
             invulnerable: 0,
-            lives: 3
+            lives: 5
         };
 
-        // Boss
+        // Boss (Équilibrage : Moins de PV, moins rapide)
         const boss = {
             x: 500, y: 100, width: 60, height: 60,
-            vx: 0, vy: 0, speed: 2.5, isGrounded: false, direction: -1,
+            vx: 0, vy: 0, speed: 2.0, isGrounded: false, direction: -1,
             actionTimer: 0, state: "idle", attackCooldown: 0, isAttacking: false,
-            hp: 15, maxHp: 15
+            hp: 10, maxHp: 10
         };
 
         function resetGame() {
-            player.lives = 3;
+            player.lives = 5;
             player.x = 200; player.y = 100; player.vx = 0; player.vy = 0; player.invulnerable = 60;
             boss.x = 500; boss.y = 100; boss.vx = 0; boss.vy = 0; boss.state = "idle";
             boss.hp = boss.maxHp;
@@ -379,7 +357,7 @@
             boss.actionTimer--;
 
             if (boss.actionTimer <= 0) {
-                boss.actionTimer = 40 + Math.random() * 50;
+                boss.actionTimer = 60 + Math.random() * 60; // Prend plus de temps à réagir
                 let absDist = Math.abs(dist);
 
                 if (absDist < 80 && boss.attackCooldown === 0) {
@@ -387,7 +365,7 @@
                 } else if (absDist > 150 && boss.attackCooldown === 0 && Math.random() < 0.6) {
                     boss.state = "range"; boss.actionTimer = 25;
                 } else {
-                    if (Math.random() > 0.5) boss.state = "chase";
+                    if (Math.random() > 0.4) boss.state = "chase";
                     else boss.state = "idle";
                 }
             }
@@ -415,12 +393,33 @@
             boss.vx *= friction; boss.x += boss.vx;
             boss.vy += gravity; boss.y += boss.vy;
 
+            // --- NOUVEAU : COLLISIONS PHYSIQUES ENTRE LES PERSONNAGES ---
+            // S'ils se touchent, ils se repoussent (solidité)
+            if (player.y < boss.y + boss.height && player.y + player.height > boss.y) {
+                if (player.x < boss.x + boss.width && player.x + player.width > boss.x) {
+                    let centerPlayer = player.x + player.width / 2;
+                    let centerBoss = boss.x + boss.width / 2;
+                    let overlap = (player.width / 2 + boss.width / 2) - Math.abs(centerPlayer - centerBoss);
+                    
+                    if (overlap > 0) {
+                        // Pousse chacun de la moitié de l'overlap
+                        if (centerPlayer < centerBoss) {
+                            player.x -= overlap / 2;
+                            boss.x += overlap / 2;
+                        } else {
+                            player.x += overlap / 2;
+                            boss.x -= overlap / 2;
+                        }
+                    }
+                }
+            }
+
             // --- PROJECTILES ---
             for (let i = 0; i < projectiles.length; i++) {
                 let p = projectiles[i];
                 p.x += p.vx;
                 if (player.invulnerable === 0 && checkRectCollision(p, player)) {
-                    applyKnockback(player, p.vx > 0 ? 1 : -1, 10);
+                    applyKnockback(player, p.vx > 0 ? 1 : -1, 8); // Dégâts réduits (Pierres)
                     loseLife();
                     projectiles.splice(i, 1); i--;
                     continue;
@@ -459,7 +458,7 @@
         function bossAttackMelee() {
             const hitbox = { x: boss.direction === 1 ? boss.x + boss.width : boss.x - 50, y: boss.y + 10, width: 50, height: 40 };
             if (player.invulnerable === 0 && checkRectCollision(hitbox, player)) {
-                applyKnockback(player, boss.direction, 15);
+                applyKnockback(player, boss.direction, 10); // Éjection réduite (Corps à corps)
                 loseLife();
             }
         }
@@ -488,14 +487,11 @@
             ctx.fillStyle = "#87CEEB"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Plateforme
             ctx.fillStyle = "#95a5a6"; ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
 
-            // Projectiles
             ctx.fillStyle = "#7f8c8d";
             projectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
 
-            // Boss
             ctx.fillStyle = boss.state === "melee" && boss.actionTimer > 5 ? "#e67e22" : "#c0392b";
             ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
             if (boss.isAttacking) {
@@ -503,7 +499,6 @@
                 ctx.fillRect(boss.direction === 1 ? boss.x + boss.width : boss.x - 50, boss.y + 10, 50, 40);
             }
 
-            // Joueur
             if (player.invulnerable === 0 || player.invulnerable % 8 < 4) {
                 ctx.fillStyle = "#3498db"; ctx.fillRect(player.x, player.y, player.width, player.height);
             }
@@ -512,7 +507,6 @@
                 ctx.fillRect(player.direction === 1 ? player.x + player.width : player.x - 40, player.y + 10, 40, 20);
             }
 
-            // Textes UI
             ctx.fillStyle = "white"; ctx.font = "bold 20px Arial";
             ctx.fillText("❤️ Vies : " + player.lives, 20, 35);
 
