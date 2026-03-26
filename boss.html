@@ -239,30 +239,24 @@
         // ==============================================================
         // 🔴 RÉGLAGES DES SPRITES 🔴
         // ==============================================================
-        // --- BOSS ---
         const bossCols = 9;
         const bossRows = 5;
-        const bossMortCols = 11; // Nombre d'images pour l'animation de mort
+        const bossMortCols = 9;
 
         const BOSS_ANIM_WALK = 0;
         const BOSS_ANIM_JUMP = 1;
         const BOSS_ANIM_RANGE = 3;
         const BOSS_ANIM_MELEE = 4;
-
-        // Hauteur du boss ajustée pour toucher le sol
         const BOSS_OFFSET_Y = 0;
 
-        // --- JOUEUR ---
         const playerCols = 8;
         const playerRows = 4;
         const playerDegatCols = 8;
         const playerDegatRows = 4;
         const PLAYER_OFFSET_Y = 5;
 
-        // --- PROJECTILE ---
         const pierreCols = 4;
         const pierreRows = 2;
-        // ==============================================================
 
         // Gestion du plein écran
         const fullscreenBtn = document.getElementById("fullscreenBtn");
@@ -291,7 +285,6 @@
         };
         bindButton("btnLeft", "left"); bindButton("btnRight", "right"); bindButton("btnJump", "jump"); bindButton("btnAttack", "attack");
 
-        // Relancer la partie (clic)
         window.addEventListener("mousedown", () => { if (gameOver || victory) resetGame(); });
         window.addEventListener("touchstart", (e) => { if (gameOver || victory) { resetGame(); } });
 
@@ -303,7 +296,7 @@
 
         // Chargement des Images
         const bossSprite = new Image(); bossSprite.src = "boss_sprite.png";
-        const bossMortSprite = new Image(); bossMortSprite.src = "boss_mort_sprite.png"; // AJOUT
+        const bossMortSprite = new Image(); bossMortSprite.src = "boss_mort_sprite.png";
         const playerSprite = new Image(); playerSprite.src = "player_sprite.png";
         const playerDegatSprite = new Image(); playerDegatSprite.src = "player_degat.png";
         const pierreSprite = new Image(); pierreSprite.src = "pierre_sprite.png";
@@ -316,7 +309,7 @@
 
         const boss = {
             x: 700, y: 100, width: 60, height: 60, vx: 0, vy: 0, speed: 1.2, jumpPower: -10, isGrounded: false, direction: -1,
-            actionTimer: 0, state: "idle", attackCooldown: 0, isAttacking: false, hp: 10, maxHp: 10,
+            actionTimer: 0, state: "idle", attackCooldown: 0, isAttacking: false, hp: 10, maxHp: 10, invulnerable: 0,
             frameX: 0, frameY: 0, frameTimer: 0, frameDuration: 4
         };
 
@@ -324,7 +317,7 @@
             player.lives = 5; player.x = 200; player.y = 100; player.vx = 0; player.vy = 0; player.invulnerable = 60;
             player.frameX = 0; player.frameY = 0; player.frameTimer = 0; player.isAttacking = false; player.isHurt = false; player.isDead = false;
             boss.hp = boss.maxHp; boss.x = 700; boss.y = 100; boss.vx = 0; boss.vy = 0; boss.state = "idle";
-            boss.frameX = 0; boss.frameY = 0; boss.frameTimer = 0; boss.isAttacking = false;
+            boss.frameX = 0; boss.frameY = 0; boss.frameTimer = 0; boss.isAttacking = false; boss.invulnerable = 0;
             projectiles.length = 0; gameOver = false; victory = false;
         }
 
@@ -374,7 +367,7 @@
                 else { player.frameY = 3; }
             }
 
-            // --- GESTION MORT BOSS ---
+            // --- BOSS MORT ---
             if ((boss.hp <= 0 || boss.y > canvas.height) && boss.state !== "dead") {
                 boss.state = "dead";
                 boss.frameX = 0;
@@ -382,84 +375,48 @@
                 boss.vx = 0;
             }
 
-            // --- BOSS ---
             if (boss.state === "dead") {
-                // Animation de mort du boss
-                boss.vx *= friction;
-                boss.x += boss.vx;
-                boss.vy += gravity;
-                boss.y += boss.vy;
+                boss.vx *= friction; boss.x += boss.vx; boss.vy += gravity; boss.y += boss.vy;
                 checkPlatform(boss);
-
                 boss.frameTimer++;
-                if (boss.frameTimer >= 8) { // Vitesse de la mort
+                if (boss.frameTimer >= 8) {
                     boss.frameTimer = 0;
-                    if (boss.frameX < bossMortCols - 1) {
-                        boss.frameX++;
-                    } else {
-                        victory = true; // Victoire déclenchée à la fin de l'animation
-                    }
+                    if (boss.frameX < bossMortCols - 1) boss.frameX++;
+                    else victory = true;
                 }
             } else {
+                // --- BOSS ALIVE ---
+                if (boss.invulnerable > 0) boss.invulnerable--;
                 let dist = player.x - boss.x; boss.direction = dist > 0 ? 1 : -1;
                 if (boss.attackCooldown > 0) boss.attackCooldown--;
                 boss.actionTimer--;
 
                 if (boss.actionTimer <= 0) {
                     let absDist = Math.abs(dist);
-                    // On modifie l'actionTimer pour couvrir toute l'animation (9 frames * 6 duration = 54)
-                    if (absDist < 80 && boss.attackCooldown === 0) {
-                        boss.state = "melee"; boss.actionTimer = 54; boss.frameX = 0; boss.frameTimer = 0;
-                    }
-                    else if (absDist > 150 && boss.attackCooldown === 0 && Math.random() < 0.6) {
-                        boss.state = "range"; boss.actionTimer = 54; boss.frameX = 0; boss.frameTimer = 0;
-                    }
-                    else {
-                        boss.actionTimer = 80 + Math.random() * 60;
-                        if (Math.random() > 0.4) boss.state = "chase"; else boss.state = "idle";
-                    }
-                    if (boss.isGrounded && Math.random() < 0.35 && boss.state !== "melee" && boss.state !== "range") {
-                        boss.vy = boss.jumpPower; boss.isGrounded = false;
-                    }
+                    if (absDist < 80 && boss.attackCooldown === 0) { boss.state = "melee"; boss.actionTimer = 54; boss.frameX = 0; boss.frameTimer = 0; }
+                    else if (absDist > 150 && boss.attackCooldown === 0 && Math.random() < 0.6) { boss.state = "range"; boss.actionTimer = 54; boss.frameX = 0; boss.frameTimer = 0; }
+                    else { boss.actionTimer = 80 + Math.random() * 60; if (Math.random() > 0.4) boss.state = "chase"; else boss.state = "idle"; }
+                    if (boss.isGrounded && Math.random() < 0.35 && boss.state !== "melee" && boss.state !== "range") { boss.vy = boss.jumpPower; boss.isGrounded = false; }
                 }
 
                 boss.isAttacking = false;
                 if (boss.state === "chase" && Math.abs(boss.vx) < 4) boss.vx = boss.direction * boss.speed;
                 else if (boss.state === "idle") boss.vx *= friction;
-                else if (boss.state === "melee") {
-                    boss.vx *= 0.5;
-                    // Frappe exactement sur la 6ème frame (index 5)
-                    if (boss.frameX === 5 && boss.frameTimer === 1) { boss.isAttacking = true; bossAttackMelee(); boss.attackCooldown = 60; }
-                }
-                else if (boss.state === "range") {
-                    boss.vx *= 0.5;
-                    // Lance la pierre exactement sur la 7ème frame (index 6)
-                    if (boss.frameX === 6 && boss.frameTimer === 1) { bossAttackRange(); boss.attackCooldown = 80; }
-                }
+                else if (boss.state === "melee") { boss.vx *= 0.5; if (boss.frameX === 5 && boss.frameTimer === 1) { boss.isAttacking = true; bossAttackMelee(); boss.attackCooldown = 60; } }
+                else if (boss.state === "range") { boss.vx *= 0.5; if (boss.frameX === 6 && boss.frameTimer === 1) { bossAttackRange(); boss.attackCooldown = 80; } }
 
                 boss.frameTimer++;
                 let currentBossDuration = (!boss.isGrounded) ? 6 : (boss.state === "melee" || boss.state === "range") ? 6 : boss.frameDuration;
+                if (boss.frameTimer >= currentBossDuration) { boss.frameTimer = 0; boss.frameX = (boss.frameX + 1) % bossCols; }
 
-                if (boss.frameTimer >= currentBossDuration) {
-                    boss.frameTimer = 0;
-                    boss.frameX = (boss.frameX + 1) % bossCols;
-                }
-
-                if (boss.state === "melee") {
-                    boss.frameY = BOSS_ANIM_MELEE; // Ligne 5
-                }
-                else if (boss.state === "range") {
-                    boss.frameY = BOSS_ANIM_RANGE; // Ligne 4
-                }
+                if (boss.state === "melee") boss.frameY = BOSS_ANIM_MELEE;
+                else if (boss.state === "range") boss.frameY = BOSS_ANIM_RANGE;
                 else {
-                    if (!boss.isGrounded) boss.frameY = BOSS_ANIM_JUMP; // Ligne 2
-                    else if (Math.abs(boss.vx) > 0.5) boss.frameY = BOSS_ANIM_WALK; // Ligne 1
+                    if (!boss.isGrounded) boss.frameY = BOSS_ANIM_JUMP;
+                    else if (Math.abs(boss.vx) > 0.5) boss.frameY = BOSS_ANIM_WALK;
                     else { boss.frameY = BOSS_ANIM_WALK; boss.frameX = 0; }
                 }
-
                 boss.vx *= friction; boss.x += boss.vx; boss.vy += gravity; boss.y += boss.vy;
-
-                // --- COLLISIONS ---
                 if (!player.isDead) {
                     if (player.y < boss.y + boss.height && player.y + player.height > boss.y && player.x < boss.x + boss.width && player.x + player.width > boss.x) {
                         let centerPlayer = player.x + player.width / 2; let centerBoss = boss.x + boss.width / 2;
@@ -471,12 +428,7 @@
 
             // --- PROJECTILES ---
             for (let i = 0; i < projectiles.length; i++) {
-                let p = projectiles[i];
-                p.x += p.vx;
-                p.vy += 0.15; // Légère gravité sur la pierre pour faire un bel arc
-                p.y += p.vy;
-                p.rot += p.vx > 0 ? 0.1 : -0.1; // Rotation
-
+                let p = projectiles[i]; p.x += p.vx; p.vy += 0.15; p.y += p.vy; p.rot += p.vx > 0 ? 0.1 : -0.1;
                 p.frameTimer++; if (p.frameTimer > 5) { p.frameTimer = 0; p.frameX = (p.frameX + 1) % pierreCols; }
                 let stoneDestroyed = false;
                 if (player.isAttacking && !player.isDead && !player.isHurt) {
@@ -488,23 +440,17 @@
                 if (p.x < 0 || p.x > canvas.width || p.y > canvas.height) { projectiles.splice(i, 1); i--; }
             }
 
-            checkPlatform(player);
-            if (boss.state !== "dead") checkPlatform(boss);
-
+            checkPlatform(player); checkPlatform(boss);
             if (player.y > canvas.height && !player.isDead) loseLife();
         }
 
         function playerAttack() {
-            if (boss.hp <= 0) return;
+            if (boss.hp <= 0 || boss.invulnerable > 0) return;
             const hitbox = { x: player.direction === 1 ? player.x + player.width : player.x - 40, y: player.y + 10, width: 40, height: 20 };
             if (checkRectCollision(hitbox, boss)) {
-                if (Math.random() < 0.2) {
-                    boss.vx = -boss.direction * 15; boss.state = "idle";
-                }
-                else {
-                    applyKnockback(boss, player.direction, 12);
-                    boss.hp--;
-                }
+                boss.invulnerable = 30; // Active l'indicateur de dégâts
+                if (Math.random() < 0.2) { boss.vx = -boss.direction * 15; boss.state = "idle"; }
+                else { applyKnockback(boss, player.direction, 12); boss.hp--; }
             }
         }
 
@@ -513,126 +459,64 @@
             if (player.invulnerable === 0 && !player.isDead && checkRectCollision(hitbox, player)) { applyKnockback(player, boss.direction, 10); loseLife(); }
         }
 
-        function bossAttackRange() {
-            // Ajout d'une propriété vy et rot pour la trajectoire et rotation
-            projectiles.push({ x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20, y: boss.y + 10, width: 25, height: 25, vx: boss.direction * 5.5, vy: -3, rot: 0, frameX: 0, frameTimer: 0 });
-        }
-
+        function bossAttackRange() { projectiles.push({ x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20, y: boss.y + 10, width: 25, height: 25, vx: boss.direction * 5.5, vy: -3, rot: 0, frameX: 0, frameTimer: 0 }); }
         function applyKnockback(target, direction, force) { target.vx = force * direction; target.vy = -6; target.isGrounded = false; }
         function checkRectCollision(r1, r2) { return r1.x < r2.x + r2.width && r1.x + r1.width > r2.x && r1.y < r2.y + r2.height && r1.y + r1.height > r2.y; }
         function checkPlatform(ent) { if (ent.vy > 0 && ent.x < platform.x + platform.width && ent.x + ent.width > platform.x && ent.y + ent.height >= platform.y && ent.y + ent.height <= platform.y + ent.vy + 2) { ent.isGrounded = true; ent.vy = 0; ent.y = platform.y - ent.height; } }
 
         function draw() {
-            // Ciel
-            let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, "#4a90e2");
-            gradient.addColorStop(1, "#87CEEB");
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Sol
-            ctx.fillStyle = "#7f8c8d";
-            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-            ctx.fillStyle = "#95a5a6";
-            ctx.fillRect(platform.x, platform.y, platform.width, 5); // Petit rebord
+            ctx.fillStyle = "#87CEEB"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#95a5a6"; ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
 
             if (pierreSprite.complete && pierreSprite.naturalWidth > 0) {
                 let sW = pierreSprite.naturalWidth / pierreCols; let sH = pierreSprite.naturalHeight / pierreRows;
-                projectiles.forEach(p => {
-                    ctx.save();
-                    ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
-                    ctx.rotate(p.rot);
-                    ctx.drawImage(pierreSprite, p.frameX * sW, 0, sW, sH, -p.width / 2 - 10, -p.height / 2 - 10, p.width + 20, p.height + 20);
-                    ctx.restore();
-                });
-            } else { ctx.fillStyle = "#7f8c8d"; projectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height)); }
+                projectiles.forEach(p => { ctx.save(); ctx.translate(p.x + p.width / 2, p.y + p.height / 2); ctx.rotate(p.rot); ctx.drawImage(pierreSprite, p.frameX * sW, 0, sW, sH, -p.width / 2 - 10, -p.height / 2 - 10, p.width + 20, p.height + 20); ctx.restore(); });
+            }
 
             // --- DESSIN BOSS ---
-            if (boss.state === "dead" && bossMortSprite.complete && bossMortSprite.naturalWidth > 0) {
-                let sourceW = bossMortSprite.naturalWidth / bossMortCols;
-                let sourceH = bossMortSprite.naturalHeight;
-                let drawWidth = 110;
-                let drawHeight = 110;
-                let drawX = boss.x - (drawWidth - boss.width) / 2;
-                let drawY = boss.y - (drawHeight - boss.height) + BOSS_OFFSET_Y;
-
+            if (boss.state === "dead" && bossMortSprite.complete) {
+                let sW = bossMortSprite.naturalWidth / bossMortCols;
+                let sH = bossMortSprite.naturalHeight;
+                let dW = 110, dH = 110;
+                let dX = boss.x - (dW - boss.width) / 2, dY = boss.y - (dH - boss.height) + BOSS_OFFSET_Y;
                 ctx.save();
-                if (boss.direction === -1) {
-                    ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2); ctx.scale(-1, 1);
-                    ctx.drawImage(bossMortSprite, boss.frameX * sourceW, 0, sourceW, sourceH, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-                } else {
-                    ctx.drawImage(bossMortSprite, boss.frameX * sourceW, 0, sourceW, sourceH, drawX, drawY, drawWidth, drawHeight);
-                }
+                if (boss.direction === -1) { ctx.translate(dX + dW / 2, dY + dH / 2); ctx.scale(-1, 1); ctx.drawImage(bossMortSprite, boss.frameX * sW, 0, sW, sH, -dW / 2, -dH / 2, dW, dH); }
+                else { ctx.drawImage(bossMortSprite, boss.frameX * sW, 0, sW, sH, dX, dY, dW, dH); }
+                ctx.restore();
+            } else if (bossSprite.complete && boss.hp > 0) {
+                let sW = bossSprite.naturalWidth / bossCols, sH = bossSprite.naturalHeight / bossRows;
+                let dW = 100, dH = 100;
+                let dX = boss.x - (dW - boss.width) / 2, dY = boss.y - (dH - boss.height) + BOSS_OFFSET_Y;
+                ctx.save();
+                if (boss.invulnerable > 0 && boss.invulnerable % 8 < 4) ctx.globalAlpha = 0.3;
+                if (boss.direction === -1) { ctx.translate(dX + dW / 2, dY + dH / 2); ctx.scale(-1, 1); ctx.drawImage(bossSprite, boss.frameX * sW, boss.frameY * sH, sW, sH, -dW / 2, -dH / 2, dW, dH); }
+                else { ctx.drawImage(bossSprite, boss.frameX * sW, boss.frameY * sH, sW, sH, dX, dY, dW, dH); }
                 ctx.restore();
             }
-            else if (bossSprite.complete && bossSprite.naturalWidth > 0 && boss.state !== "dead") {
-                let sourceW = bossSprite.naturalWidth / bossCols; let sourceH = bossSprite.naturalHeight / bossRows;
-                let drawWidth = 100; let drawHeight = 100;
-                let drawX = boss.x - (drawWidth - boss.width) / 2; let drawY = boss.y - (drawHeight - boss.height) + BOSS_OFFSET_Y;
-
-                ctx.save();
-                if (boss.isAttacking) {
-                    ctx.fillStyle = "rgba(231, 76, 60, 0.4)";
-                    ctx.fillRect(boss.direction === 1 ? boss.x + boss.width : boss.x - 50, boss.y + 10, 50, 40);
-                }
-
-                if (boss.direction === -1) {
-                    ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2); ctx.scale(-1, 1);
-                    ctx.drawImage(bossSprite, boss.frameX * sourceW, boss.frameY * sourceH, sourceW, sourceH, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-                } else {
-                    ctx.drawImage(bossSprite, boss.frameX * sourceW, boss.frameY * sourceH, sourceW, sourceH, drawX, drawY, drawWidth, drawHeight);
-                }
-                ctx.restore();
-            } else if (boss.state !== "dead") { ctx.fillStyle = boss.state === "melee" && boss.actionTimer > 5 ? "#e67e22" : "#c0392b"; ctx.fillRect(boss.x, boss.y, boss.width, boss.height); }
 
             // --- DESSIN JOUEUR ---
-            let currentSpriteFile = (player.isHurt || player.isDead) ? playerDegatSprite : playerSprite;
-            let currentCols = (player.isHurt || player.isDead) ? playerDegatCols : playerCols;
-            let currentRows = (player.isHurt || player.isDead) ? playerDegatRows : playerRows;
-
-            if (currentSpriteFile.complete && currentSpriteFile.naturalWidth > 0) {
-                let pSourceW = currentSpriteFile.naturalWidth / currentCols; let pSourceH = currentSpriteFile.naturalHeight / currentRows;
-                let pDrawWidth = 80; let pDrawHeight = 80;
-                let pDrawX = player.x - (pDrawWidth - player.width) / 2; let pDrawY = player.y - (pDrawHeight - player.height) + PLAYER_OFFSET_Y;
-
+            let curFile = (player.isHurt || player.isDead) ? playerDegatSprite : playerSprite;
+            let curCols = (player.isHurt || player.isDead) ? playerDegatCols : playerCols;
+            if (curFile.complete) {
+                let sW = curFile.naturalWidth / curCols, sH = curFile.naturalHeight / 4;
+                let dW = 80, dH = 80;
+                let dX = player.x - (dW - player.width) / 2, dY = player.y - (dH - player.height) + PLAYER_OFFSET_Y;
                 ctx.save();
-                if (player.invulnerable > 0 && player.invulnerable % 8 < 4 && !player.isDead) ctx.globalAlpha = 0.5;
-                if (player.isAttacking && !player.isHurt && !player.isDead) {
-                    ctx.fillStyle = "rgba(52, 152, 219, 0.4)";
-                    ctx.fillRect(player.direction === 1 ? player.x + player.width : player.x - 40, player.y + 10, 40, 20);
-                }
-
-                if (player.direction === -1) {
-                    ctx.translate(pDrawX + pDrawWidth / 2, pDrawY + pDrawHeight / 2); ctx.scale(-1, 1);
-                    ctx.drawImage(currentSpriteFile, player.frameX * pSourceW, player.frameY * pSourceH, pSourceW, pSourceH, -pDrawWidth / 2, -pDrawHeight / 2, pDrawWidth, pDrawHeight);
-                } else {
-                    ctx.drawImage(currentSpriteFile, player.frameX * pSourceW, player.frameY * pSourceH, pSourceW, pSourceH, pDrawX, pDrawY, pDrawWidth, pDrawHeight);
-                }
+                if (player.invulnerable > 0 && player.invulnerable % 8 < 4 && !player.isDead) ctx.globalAlpha = 0.3;
+                if (player.direction === -1) { ctx.translate(dX + dW / 2, dY + dH / 2); ctx.scale(-1, 1); ctx.drawImage(curFile, player.frameX * sW, player.frameY * sH, sW, sH, -dW / 2, -dH / 2, dW, dH); }
+                else { ctx.drawImage(curFile, player.frameX * sW, player.frameY * sH, sW, sH, dX, dY, dW, dH); }
                 ctx.restore();
-            } else { if (player.invulnerable === 0 || player.invulnerable % 8 < 4) { ctx.fillStyle = "#3498db"; ctx.fillRect(player.x, player.y, player.width, player.height); } }
+            }
 
-            // --- UI ---
-            // Barres de vie du Joueur
+            // UI
             ctx.fillStyle = "white"; ctx.font = "bold 20px Arial"; ctx.fillText("Vies :", 20, 35);
-            for (let i = 0; i < 5; i++) {
-                ctx.fillStyle = i < player.lives ? "#e74c3c" : "rgba(0,0,0,0.3)";
-                ctx.beginPath(); ctx.arc(95 + i * 22, 28, 8, 0, Math.PI * 2); ctx.fill();
-            }
-
-            // Barre de vie du Boss
+            for (let i = 0; i < 5; i++) { ctx.fillStyle = i < player.lives ? "#e74c3c" : "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.arc(95 + i * 22, 28, 8, 0, Math.PI * 2); ctx.fill(); }
             if (boss.hp > 0) {
-                let bossBarWidth = 300;
-                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-                ctx.fillRect(canvas.width - bossBarWidth - 20, 20, bossBarWidth, 20);
-                ctx.fillStyle = "#c0392b";
-                ctx.fillRect(canvas.width - bossBarWidth - 20, 20, bossBarWidth * (Math.max(0, boss.hp) / boss.maxHp), 20);
-                ctx.strokeStyle = "white"; ctx.lineWidth = 2;
-                ctx.strokeRect(canvas.width - bossBarWidth - 20, 20, bossBarWidth, 20);
-                ctx.fillStyle = "white"; ctx.font = "bold 14px Arial";
-                ctx.fillText("LE SCHWEISSDISSI", canvas.width - bossBarWidth - 15, 15);
+                let bw = 300; ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(canvas.width - bw - 20, 20, bw, 20);
+                ctx.fillStyle = "#c0392b"; ctx.fillRect(canvas.width - bw - 20, 20, bw * (boss.hp / boss.maxHp), 20);
+                ctx.strokeStyle = "white"; ctx.strokeRect(canvas.width - bw - 20, 20, bw, 20);
+                ctx.fillStyle = "white"; ctx.font = "bold 14px Arial"; ctx.fillText("BOSS", canvas.width - bw - 15, 15);
             }
-
-            // Messages de Fin
             if (victory) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "#f1c40f"; ctx.font = "bold 50px Arial"; ctx.fillText("BOSS VAINCU !", 310, 200); ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour rejouer)", 400, 250); }
             if (gameOver) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "white"; ctx.font = "bold 50px Arial"; ctx.fillText("DÉFAITE...", 380, 200); ctx.fillStyle = "#e74c3c"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour réessayer)", 390, 250); }
         }
