@@ -236,9 +236,7 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // ==============================================================
-        // 🔴 RÉGLAGES DES SPRITES 🔴
-        // ==============================================================
+        // --- BOSS CONFIG ---
         const bossCols = 9;
         const bossRows = 5;
         const bossMortCols = 9;
@@ -249,16 +247,16 @@
         const BOSS_ANIM_MELEE = 4;
         const BOSS_OFFSET_Y = 0;
 
+        // --- PLAYER CONFIG ---
         const playerCols = 8;
         const playerRows = 4;
         const playerDegatCols = 8;
-        const playerDegatRows = 4;
         const PLAYER_OFFSET_Y = 5;
 
+        // --- PROJECTILE ---
         const pierreCols = 4;
         const pierreRows = 2;
 
-        // Gestion du plein écran
         const fullscreenBtn = document.getElementById("fullscreenBtn");
         const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
         const gameContainer = document.getElementById("gameContainer");
@@ -273,7 +271,6 @@
             gameContainer.classList.remove("pseudo-fullscreen"); topBar.style.display = "flex"; instructions.style.display = "block"; document.body.style.backgroundColor = "#2c3e50"; exitFullscreenBtn.style.display = "none"; fullscreenBtn.style.display = "block"; resetGame();
         });
 
-        // Contrôles
         const input = { left: false, right: false, jump: false, attack: false };
         window.addEventListener("keydown", (e) => { if (e.code === "ArrowLeft") input.left = true; if (e.code === "ArrowRight") input.right = true; if (e.code === "ArrowUp") input.jump = true; if (e.code === "Space") input.attack = true; });
         window.addEventListener("keyup", (e) => { if (e.code === "ArrowLeft") input.left = false; if (e.code === "ArrowRight") input.right = false; if (e.code === "ArrowUp") input.jump = false; if (e.code === "Space") input.attack = false; });
@@ -288,20 +285,17 @@
         window.addEventListener("mousedown", () => { if (gameOver || victory) resetGame(); });
         window.addEventListener("touchstart", (e) => { if (gameOver || victory) { resetGame(); } });
 
-        // Variables Globales
         const gravity = 0.6; const friction = 0.8;
         let gameOver = false; let victory = false;
         const platform = { x: 50, y: 400, width: 900, height: 20 };
         const projectiles = [];
 
-        // Chargement des Images
         const bossSprite = new Image(); bossSprite.src = "boss_sprite.png";
         const bossMortSprite = new Image(); bossMortSprite.src = "boss_mort_sprite.png";
         const playerSprite = new Image(); playerSprite.src = "player_sprite.png";
         const playerDegatSprite = new Image(); playerDegatSprite.src = "player_degat.png";
         const pierreSprite = new Image(); pierreSprite.src = "pierre_sprite.png";
 
-        // Entités
         const player = {
             x: 200, y: 100, width: 40, height: 40, vx: 0, vy: 0, speed: 5, jumpPower: -12, isGrounded: false, direction: 1,
             attackCooldown: 0, isAttacking: false, invulnerable: 0, lives: 5, isHurt: false, hurtTimer: 0, isDead: false, frameX: 0, frameY: 0, frameTimer: 0, frameDuration: 4
@@ -331,18 +325,17 @@
         function update() {
             if (gameOver || victory) return;
 
-            // --- JOUEUR ---
             if (player.invulnerable > 0) player.invulnerable--;
             if (player.attackCooldown > 0) player.attackCooldown--;
 
             if (player.isDead) {
                 player.vx *= friction; player.x += player.vx; player.vy += gravity; player.y += player.vy; checkPlatform(player);
-                player.frameTimer++; if (player.frameTimer > 8) { player.frameTimer = 0; if (player.frameX < playerDegatCols - 1) player.frameX++; else gameOver = true; }
+                player.frameTimer++; if (player.frameTimer > 8) { player.frameTimer = 0; if (player.frameX < 7) player.frameX++; else gameOver = true; }
             }
             else if (player.isHurt) {
                 player.vx *= friction; player.x += player.vx; player.vy += gravity; player.y += player.vy; checkPlatform(player);
                 player.hurtTimer--; if (player.hurtTimer <= 0) player.isHurt = false;
-                player.frameTimer++; if (player.frameTimer > player.frameDuration) { player.frameTimer = 0; player.frameX = (player.frameX + 1) % playerDegatCols; }
+                player.frameTimer++; if (player.frameTimer > player.frameDuration) { player.frameTimer = 0; player.frameX = (player.frameX + 1) % 8; }
             }
             else {
                 if (!player.isAttacking) {
@@ -356,23 +349,26 @@
                     player.isAttacking = true; player.attackCooldown = 30; player.frameX = 0; player.frameY = 3; player.frameTimer = 0; playerAttack();
                 }
 
-                player.frameTimer++; let currentPlayerDuration = (!player.isGrounded && !player.isAttacking) ? 18 : player.frameDuration;
-                if (player.frameTimer >= currentPlayerDuration) {
+                player.frameTimer++; let curDur = (!player.isGrounded && !player.isAttacking) ? 18 : player.frameDuration;
+                if (player.frameTimer >= curDur) {
                     player.frameTimer = 0;
-                    if (player.isAttacking) { player.frameX++; if (player.frameX >= playerCols) { player.frameX = 0; player.isAttacking = false; } }
-                    else { player.frameX = (player.frameX + 1) % playerCols; }
+                    if (player.isAttacking) { player.frameX++; if (player.frameX >= 8) { player.frameX = 0; player.isAttacking = false; } }
+                    else { player.frameX = (player.frameX + 1) % 8; }
                 }
 
-                if (!player.isAttacking) { if (!player.isGrounded) player.frameY = 2; else if (Math.abs(player.vx) > 0.5) player.frameY = 0; else { player.frameY = 0; player.frameX = 0; } }
+                if (!player.isAttacking) {
+                    if (!player.isGrounded) {
+                        player.frameY = 2;
+                        if (player.vy < 0) player.frameX = 2; else player.frameX = 4;
+                    }
+                    else if (Math.abs(player.vx) > 0.5) player.frameY = 0;
+                    else { player.frameY = 0; player.frameX = 0; }
+                }
                 else { player.frameY = 3; }
             }
 
-            // --- BOSS MORT ---
             if ((boss.hp <= 0 || boss.y > canvas.height) && boss.state !== "dead") {
-                boss.state = "dead";
-                boss.frameX = 0;
-                boss.frameTimer = 0;
-                boss.vx = 0;
+                boss.state = "dead"; boss.frameX = 0; boss.frameTimer = 0; boss.vx = 0;
             }
 
             if (boss.state === "dead") {
@@ -385,7 +381,6 @@
                     else victory = true;
                 }
             } else {
-                // --- BOSS ALIVE ---
                 if (boss.invulnerable > 0) boss.invulnerable--;
                 let dist = player.x - boss.x; boss.direction = dist > 0 ? 1 : -1;
                 if (boss.attackCooldown > 0) boss.attackCooldown--;
@@ -406,8 +401,8 @@
                 else if (boss.state === "range") { boss.vx *= 0.5; if (boss.frameX === 6 && boss.frameTimer === 1) { bossAttackRange(); boss.attackCooldown = 80; } }
 
                 boss.frameTimer++;
-                let currentBossDuration = (!boss.isGrounded) ? 6 : (boss.state === "melee" || boss.state === "range") ? 6 : boss.frameDuration;
-                if (boss.frameTimer >= currentBossDuration) { boss.frameTimer = 0; boss.frameX = (boss.frameX + 1) % bossCols; }
+                let curBossDur = (!boss.isGrounded) ? 6 : (boss.state === "melee" || boss.state === "range") ? 6 : boss.frameDuration;
+                if (boss.frameTimer >= curBossDur) { boss.frameTimer = 0; boss.frameX = (boss.frameX + 1) % bossCols; }
 
                 if (boss.state === "melee") boss.frameY = BOSS_ANIM_MELEE;
                 else if (boss.state === "range") boss.frameY = BOSS_ANIM_RANGE;
@@ -426,9 +421,11 @@
                 }
             }
 
-            // --- PROJECTILES ---
             for (let i = 0; i < projectiles.length; i++) {
-                let p = projectiles[i]; p.x += p.vx; p.vy += 0.15; p.y += p.vy; p.rot += p.vx > 0 ? 0.1 : -0.1;
+                let p = projectiles[i];
+                p.x += p.vx;
+                p.y += p.vy; // Reste à 0 pour aller droit
+                p.rot += p.vx > 0 ? 0.1 : -0.1;
                 p.frameTimer++; if (p.frameTimer > 5) { p.frameTimer = 0; p.frameX = (p.frameX + 1) % pierreCols; }
                 let stoneDestroyed = false;
                 if (player.isAttacking && !player.isDead && !player.isHurt) {
@@ -437,7 +434,7 @@
                 }
                 if (stoneDestroyed) continue;
                 if (player.invulnerable === 0 && !player.isDead && checkRectCollision(p, player)) { applyKnockback(player, p.vx > 0 ? 1 : -1, 8); loseLife(); projectiles.splice(i, 1); i--; continue; }
-                if (p.x < 0 || p.x > canvas.width || p.y > canvas.height) { projectiles.splice(i, 1); i--; }
+                if (p.x < 0 || p.x > canvas.width) { projectiles.splice(i, 1); i--; }
             }
 
             checkPlatform(player); checkPlatform(boss);
@@ -448,7 +445,7 @@
             if (boss.hp <= 0 || boss.invulnerable > 0) return;
             const hitbox = { x: player.direction === 1 ? player.x + player.width : player.x - 40, y: player.y + 10, width: 40, height: 20 };
             if (checkRectCollision(hitbox, boss)) {
-                boss.invulnerable = 30; // Active l'indicateur de dégâts
+                boss.invulnerable = 30;
                 if (Math.random() < 0.2) { boss.vx = -boss.direction * 15; boss.state = "idle"; }
                 else { applyKnockback(boss, player.direction, 12); boss.hp--; }
             }
@@ -459,7 +456,19 @@
             if (player.invulnerable === 0 && !player.isDead && checkRectCollision(hitbox, player)) { applyKnockback(player, boss.direction, 10); loseLife(); }
         }
 
-        function bossAttackRange() { projectiles.push({ x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20, y: boss.y + 10, width: 25, height: 25, vx: boss.direction * 5.5, vy: -3, rot: 0, frameX: 0, frameTimer: 0 }); }
+        function bossAttackRange() {
+            projectiles.push({
+                x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20,
+                y: boss.y + 5,
+                width: 25, height: 25,
+                vx: boss.direction * 6,
+                vy: 0,
+                rot: 0,
+                frameX: 0,
+                frameTimer: 0
+            });
+        }
+
         function applyKnockback(target, direction, force) { target.vx = force * direction; target.vy = -6; target.isGrounded = false; }
         function checkRectCollision(r1, r2) { return r1.x < r2.x + r2.width && r1.x + r1.width > r2.x && r1.y < r2.y + r2.height && r1.y + r1.height > r2.y; }
         function checkPlatform(ent) { if (ent.vy > 0 && ent.x < platform.x + platform.width && ent.x + ent.width > platform.x && ent.y + ent.height >= platform.y && ent.y + ent.height <= platform.y + ent.vy + 2) { ent.isGrounded = true; ent.vy = 0; ent.y = platform.y - ent.height; } }
@@ -473,10 +482,8 @@
                 projectiles.forEach(p => { ctx.save(); ctx.translate(p.x + p.width / 2, p.y + p.height / 2); ctx.rotate(p.rot); ctx.drawImage(pierreSprite, p.frameX * sW, 0, sW, sH, -p.width / 2 - 10, -p.height / 2 - 10, p.width + 20, p.height + 20); ctx.restore(); });
             }
 
-            // --- DESSIN BOSS ---
             if (boss.state === "dead" && bossMortSprite.complete) {
-                let sW = bossMortSprite.naturalWidth / bossMortCols;
-                let sH = bossMortSprite.naturalHeight;
+                let sW = bossMortSprite.naturalWidth / bossMortCols, sH = bossMortSprite.naturalHeight;
                 let dW = 110, dH = 110;
                 let dX = boss.x - (dW - boss.width) / 2, dY = boss.y - (dH - boss.height) + BOSS_OFFSET_Y;
                 ctx.save();
@@ -494,7 +501,6 @@
                 ctx.restore();
             }
 
-            // --- DESSIN JOUEUR ---
             let curFile = (player.isHurt || player.isDead) ? playerDegatSprite : playerSprite;
             let curCols = (player.isHurt || player.isDead) ? playerDegatCols : playerCols;
             if (curFile.complete) {
@@ -508,7 +514,6 @@
                 ctx.restore();
             }
 
-            // UI
             ctx.fillStyle = "white"; ctx.font = "bold 20px Arial"; ctx.fillText("Vies :", 20, 35);
             for (let i = 0; i < 5; i++) { ctx.fillStyle = i < player.lives ? "#e74c3c" : "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.arc(95 + i * 22, 28, 8, 0, Math.PI * 2); ctx.fill(); }
             if (boss.hp > 0) {
