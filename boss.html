@@ -3,8 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Niveau 5 : Le Boss Final (Collisions & Équilibrage)</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Niveau 5 : Le Boss Final</title>
     <style>
         body {
             margin: 0;
@@ -21,8 +22,12 @@
             height: 100dvh;
         }
 
-        h2 { margin: 10px 0 5px 0; font-size: 18px; flex-shrink: 0; }
-        
+        h2 {
+            margin: 10px 0 5px 0;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
         #topBar {
             display: flex;
             justify-content: center;
@@ -40,10 +45,19 @@
             border-radius: 5px;
             font-weight: bold;
             cursor: pointer;
+            transition: 0.2s;
         }
-        #fullscreenBtn:active { background-color: #2980b9; }
 
-        .instructions { font-size: 12px; color: #bdc3c7; margin-bottom: 5px; flex-shrink: 0; }
+        #fullscreenBtn:active {
+            background-color: #2980b9;
+        }
+
+        .instructions {
+            font-size: 12px;
+            color: #bdc3c7;
+            margin-bottom: 5px;
+            flex-shrink: 0;
+        }
 
         #mainContent {
             display: flex;
@@ -52,7 +66,6 @@
             height: 100%;
         }
 
-        /* LE CONTENEUR PRINCIPAL DU JEU */
         #gameContainer {
             position: relative;
             display: flex;
@@ -77,7 +90,11 @@
             cursor: pointer;
             z-index: 1000;
         }
-        #exitFullscreenBtn:active { background-color: rgba(192, 57, 43, 1); transform: scale(0.95); }
+
+        #exitFullscreenBtn:active {
+            background-color: rgba(192, 57, 43, 1);
+            transform: scale(0.95);
+        }
 
         #canvasWrapper {
             display: flex;
@@ -94,6 +111,7 @@
             max-height: 100%;
             object-fit: contain;
             cursor: pointer;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
         }
 
         #controls {
@@ -103,12 +121,13 @@
             padding: 10px 5%;
             padding-bottom: max(10px, env(safe-area-inset-bottom));
             background: #1a252f;
-            border-top: 4px solid #34495e; 
-            flex-shrink: 0; 
+            border-top: 4px solid #34495e;
+            flex-shrink: 0;
             z-index: 10;
         }
 
-        .d-pad, .action-buttons {
+        .d-pad,
+        .action-buttons {
             display: flex;
             gap: 15px;
         }
@@ -127,16 +146,26 @@
             justify-content: center;
             user-select: none;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent; 
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .btn:active { background-color: #e74c3c; transform: scale(0.95); }
-        .btn-attack { background-color: #e67e22; border-color: #d35400; }
+        .btn:active {
+            background-color: #e74c3c;
+            transform: scale(0.95);
+        }
+
+        .btn-attack {
+            background-color: #e67e22;
+            border-color: #d35400;
+        }
 
         #orientationWarning {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100dvh;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
             background-color: #1a252f;
             color: #f1c40f;
             z-index: 9999;
@@ -149,13 +178,21 @@
         }
 
         @media screen and (orientation: portrait) {
-            #orientationWarning { display: flex; }
-            #mainContent { display: none !important; }
+            #orientationWarning {
+                display: flex;
+            }
+
+            #mainContent {
+                display: none !important;
+            }
         }
 
-        #gameContainer:fullscreen, #gameContainer:-webkit-full-screen, .pseudo-fullscreen {
+        .pseudo-fullscreen {
             position: fixed !important;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             width: 100vw !important;
             height: 100dvh !important;
             max-width: none !important;
@@ -181,11 +218,7 @@
 
         <div id="gameContainer">
             <button id="exitFullscreenBtn">❌ Quitter</button>
-
-            <div id="canvasWrapper">
-                <canvas id="gameCanvas" width="800" height="400"></canvas>
-            </div>
-            
+            <div id="canvasWrapper"><canvas id="gameCanvas" width="1000" height="500"></canvas></div>
             <div id="controls">
                 <div class="d-pad">
                     <div class="btn" id="btnLeft">⬅️</div>
@@ -203,7 +236,35 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // --- GESTION DU PLEIN ÉCRAN ---
+        // ==============================================================
+        // 🔴 RÉGLAGES DES SPRITES 🔴
+        // ==============================================================
+        // --- BOSS ---
+        const bossCols = 9;
+        const bossRows = 5;
+        const bossMortCols = 11; // Nombre d'images pour l'animation de mort
+
+        const BOSS_ANIM_WALK = 0;
+        const BOSS_ANIM_JUMP = 1;
+        const BOSS_ANIM_RANGE = 3;
+        const BOSS_ANIM_MELEE = 4;
+
+        // Hauteur du boss ajustée pour toucher le sol
+        const BOSS_OFFSET_Y = 0;
+
+        // --- JOUEUR ---
+        const playerCols = 8;
+        const playerRows = 4;
+        const playerDegatCols = 8;
+        const playerDegatRows = 4;
+        const PLAYER_OFFSET_Y = 5;
+
+        // --- PROJECTILE ---
+        const pierreCols = 4;
+        const pierreRows = 2;
+        // ==============================================================
+
+        // Gestion du plein écran
         const fullscreenBtn = document.getElementById("fullscreenBtn");
         const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
         const gameContainer = document.getElementById("gameContainer");
@@ -211,117 +272,67 @@
         const instructions = document.querySelector(".instructions");
 
         fullscreenBtn.addEventListener("click", () => {
-            if (gameContainer.requestFullscreen) {
-                gameContainer.requestFullscreen();
-            } else if (gameContainer.webkitRequestFullscreen) { 
-                gameContainer.webkitRequestFullscreen();
-            } else {
-                gameContainer.classList.add("pseudo-fullscreen");
-                window.scrollTo(0, 0);
-            }
-            topBar.style.display = "none";
-            instructions.style.display = "none";
-            document.body.style.backgroundColor = "#87CEEB";
-            exitFullscreenBtn.style.display = "block";
+            gameContainer.classList.add("pseudo-fullscreen"); window.scrollTo(0, 0);
+            topBar.style.display = "none"; instructions.style.display = "none"; document.body.style.backgroundColor = "#87CEEB"; exitFullscreenBtn.style.display = "block";
         });
-
         exitFullscreenBtn.addEventListener("click", () => {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else {
-                exitFullscreenLogic();
-            }
+            gameContainer.classList.remove("pseudo-fullscreen"); topBar.style.display = "flex"; instructions.style.display = "block"; document.body.style.backgroundColor = "#2c3e50"; exitFullscreenBtn.style.display = "none"; fullscreenBtn.style.display = "block"; resetGame();
         });
 
-        document.addEventListener("fullscreenchange", checkFullscreen);
-        document.addEventListener("webkitfullscreenchange", checkFullscreen);
-
-        function checkFullscreen() {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                exitFullscreenLogic();
-            }
-        }
-
-        function exitFullscreenLogic() {
-            gameContainer.classList.remove("pseudo-fullscreen");
-            topBar.style.display = "flex";
-            instructions.style.display = "block";
-            document.body.style.backgroundColor = "#2c3e50";
-            exitFullscreenBtn.style.display = "none";
-            fullscreenBtn.style.display = "block";
-            resetGame();
-        }
-
-        // --- CONTRÔLES ---
+        // Contrôles
         const input = { left: false, right: false, jump: false, attack: false };
-        window.addEventListener("keydown", (e) => {
-            if (e.code === "ArrowLeft") input.left = true;
-            if (e.code === "ArrowRight") input.right = true;
-            if (e.code === "ArrowUp") input.jump = true;
-            if (e.code === "Space") input.attack = true;
-        });
-        window.addEventListener("keyup", (e) => {
-            if (e.code === "ArrowLeft") input.left = false;
-            if (e.code === "ArrowRight") input.right = false;
-            if (e.code === "ArrowUp") input.jump = false;
-            if (e.code === "Space") input.attack = false;
-        });
+        window.addEventListener("keydown", (e) => { if (e.code === "ArrowLeft") input.left = true; if (e.code === "ArrowRight") input.right = true; if (e.code === "ArrowUp") input.jump = true; if (e.code === "Space") input.attack = true; });
+        window.addEventListener("keyup", (e) => { if (e.code === "ArrowLeft") input.left = false; if (e.code === "ArrowRight") input.right = false; if (e.code === "ArrowUp") input.jump = false; if (e.code === "Space") input.attack = false; });
 
         const bindButton = (id, key) => {
             const btn = document.getElementById(id);
-            btn.addEventListener("touchstart", (e) => { e.preventDefault(); input[key] = true; });
-            btn.addEventListener("touchend", (e) => { e.preventDefault(); input[key] = false; });
-            btn.addEventListener("mousedown", () => input[key] = true);
-            btn.addEventListener("mouseup", () => input[key] = false);
-            btn.addEventListener("mouseleave", () => input[key] = false);
+            btn.addEventListener("touchstart", (e) => { e.preventDefault(); input[key] = true; }); btn.addEventListener("touchend", (e) => { e.preventDefault(); input[key] = false; });
+            btn.addEventListener("mousedown", () => input[key] = true); btn.addEventListener("mouseup", () => input[key] = false); btn.addEventListener("mouseleave", () => input[key] = false);
         };
-        bindButton("btnLeft", "left"); bindButton("btnRight", "right");
-        bindButton("btnJump", "jump"); bindButton("btnAttack", "attack");
+        bindButton("btnLeft", "left"); bindButton("btnRight", "right"); bindButton("btnJump", "jump"); bindButton("btnAttack", "attack");
 
-        canvas.addEventListener("mousedown", () => { if (gameOver || victory) resetGame(); });
-        canvas.addEventListener("touchstart", (e) => { if (gameOver || victory) { e.preventDefault(); resetGame(); } });
+        // Relancer la partie (clic)
+        window.addEventListener("mousedown", () => { if (gameOver || victory) resetGame(); });
+        window.addEventListener("touchstart", (e) => { if (gameOver || victory) { resetGame(); } });
 
-        // --- VARIABLES GLOBALES ---
+        // Variables Globales
         const gravity = 0.6; const friction = 0.8;
         let gameOver = false; let victory = false;
-        const platform = { x: 100, y: 300, width: 600, height: 20 };
+        const platform = { x: 50, y: 400, width: 900, height: 20 };
         const projectiles = [];
 
-        // Joueur (Équilibrage : 5 vies)
+        // Chargement des Images
+        const bossSprite = new Image(); bossSprite.src = "boss_sprite.png";
+        const bossMortSprite = new Image(); bossMortSprite.src = "boss_mort_sprite.png"; // AJOUT
+        const playerSprite = new Image(); playerSprite.src = "player_sprite.png";
+        const playerDegatSprite = new Image(); playerDegatSprite.src = "player_degat.png";
+        const pierreSprite = new Image(); pierreSprite.src = "pierre_sprite.png";
+
+        // Entités
         const player = {
-            x: 200, y: 100, width: 40, height: 40,
-            vx: 0, vy: 0, speed: 5, jumpPower: -12,
-            isGrounded: false, direction: 1,
-            attackCooldown: 0, isAttacking: false,
-            invulnerable: 0,
-            lives: 5
+            x: 200, y: 100, width: 40, height: 40, vx: 0, vy: 0, speed: 5, jumpPower: -12, isGrounded: false, direction: 1,
+            attackCooldown: 0, isAttacking: false, invulnerable: 0, lives: 5, isHurt: false, hurtTimer: 0, isDead: false, frameX: 0, frameY: 0, frameTimer: 0, frameDuration: 4
         };
 
-        // Boss (Équilibrage : Moins de PV, moins rapide)
         const boss = {
-            x: 500, y: 100, width: 60, height: 60,
-            vx: 0, vy: 0, speed: 2.0, isGrounded: false, direction: -1,
-            actionTimer: 0, state: "idle", attackCooldown: 0, isAttacking: false,
-            hp: 10, maxHp: 10
+            x: 700, y: 100, width: 60, height: 60, vx: 0, vy: 0, speed: 1.2, jumpPower: -10, isGrounded: false, direction: -1,
+            actionTimer: 0, state: "idle", attackCooldown: 0, isAttacking: false, hp: 10, maxHp: 10,
+            frameX: 0, frameY: 0, frameTimer: 0, frameDuration: 4
         };
 
         function resetGame() {
-            player.lives = 5;
-            player.x = 200; player.y = 100; player.vx = 0; player.vy = 0; player.invulnerable = 60;
-            boss.x = 500; boss.y = 100; boss.vx = 0; boss.vy = 0; boss.state = "idle";
-            boss.hp = boss.maxHp;
-            projectiles.length = 0;
-            gameOver = false;
-            victory = false;
+            player.lives = 5; player.x = 200; player.y = 100; player.vx = 0; player.vy = 0; player.invulnerable = 60;
+            player.frameX = 0; player.frameY = 0; player.frameTimer = 0; player.isAttacking = false; player.isHurt = false; player.isDead = false;
+            boss.hp = boss.maxHp; boss.x = 700; boss.y = 100; boss.vx = 0; boss.vy = 0; boss.state = "idle";
+            boss.frameX = 0; boss.frameY = 0; boss.frameTimer = 0; boss.isAttacking = false;
+            projectiles.length = 0; gameOver = false; victory = false;
         }
 
         function loseLife() {
-            if (player.invulnerable > 0) return;
-            player.lives--;
-            player.invulnerable = 60;
-            if (player.lives <= 0) gameOver = true;
+            if (player.invulnerable > 0 || player.isDead) return;
+            player.lives--; player.invulnerable = 60;
+            if (player.lives <= 0) { player.isDead = true; player.frameX = 0; player.frameY = 2; player.vx = 0; }
+            else { player.isHurt = true; player.hurtTimer = 25; player.frameX = 0; player.frameY = 0; player.isAttacking = false; }
         }
 
         function update() {
@@ -331,85 +342,129 @@
             if (player.invulnerable > 0) player.invulnerable--;
             if (player.attackCooldown > 0) player.attackCooldown--;
 
-            if (Math.abs(player.vx) < 6) {
-                if (input.left) { player.vx -= 1; player.direction = -1; }
-                if (input.right) { player.vx += 1; player.direction = 1; }
+            if (player.isDead) {
+                player.vx *= friction; player.x += player.vx; player.vy += gravity; player.y += player.vy; checkPlatform(player);
+                player.frameTimer++; if (player.frameTimer > 8) { player.frameTimer = 0; if (player.frameX < playerDegatCols - 1) player.frameX++; else gameOver = true; }
             }
-            player.vx *= friction;
-            player.x += player.vx;
-
-            if (input.jump && player.isGrounded) {
-                player.vy = player.jumpPower; player.isGrounded = false;
+            else if (player.isHurt) {
+                player.vx *= friction; player.x += player.vx; player.vy += gravity; player.y += player.vy; checkPlatform(player);
+                player.hurtTimer--; if (player.hurtTimer <= 0) player.isHurt = false;
+                player.frameTimer++; if (player.frameTimer > player.frameDuration) { player.frameTimer = 0; player.frameX = (player.frameX + 1) % playerDegatCols; }
             }
-            player.vy += gravity; player.y += player.vy;
-
-            player.isAttacking = false;
-            if (input.attack && player.attackCooldown === 0) {
-                player.isAttacking = true;
-                player.attackCooldown = 30;
-                playerAttack();
-            }
-
-            // --- IA DU BOSS ---
-            let dist = player.x - boss.x;
-            boss.direction = dist > 0 ? 1 : -1;
-            if (boss.attackCooldown > 0) boss.attackCooldown--;
-            boss.actionTimer--;
-
-            if (boss.actionTimer <= 0) {
-                boss.actionTimer = 60 + Math.random() * 60; // Prend plus de temps à réagir
-                let absDist = Math.abs(dist);
-
-                if (absDist < 80 && boss.attackCooldown === 0) {
-                    boss.state = "melee"; boss.actionTimer = 30;
-                } else if (absDist > 150 && boss.attackCooldown === 0 && Math.random() < 0.6) {
-                    boss.state = "range"; boss.actionTimer = 25;
-                } else {
-                    if (Math.random() > 0.4) boss.state = "chase";
-                    else boss.state = "idle";
+            else {
+                if (!player.isAttacking) {
+                    if (Math.abs(player.vx) < 4.5) { if (input.left) { player.vx -= 1; player.direction = -1; } if (input.right) { player.vx += 1; player.direction = 1; } }
                 }
+                player.vx *= friction; player.x += player.vx;
+                if (input.jump && player.isGrounded && !player.isAttacking) { player.vy = player.jumpPower; player.isGrounded = false; }
+                player.vy += gravity; player.y += player.vy;
+
+                if (input.attack && player.attackCooldown === 0 && !player.isAttacking) {
+                    player.isAttacking = true; player.attackCooldown = 30; player.frameX = 0; player.frameY = 3; player.frameTimer = 0; playerAttack();
+                }
+
+                player.frameTimer++; let currentPlayerDuration = (!player.isGrounded && !player.isAttacking) ? 18 : player.frameDuration;
+                if (player.frameTimer >= currentPlayerDuration) {
+                    player.frameTimer = 0;
+                    if (player.isAttacking) { player.frameX++; if (player.frameX >= playerCols) { player.frameX = 0; player.isAttacking = false; } }
+                    else { player.frameX = (player.frameX + 1) % playerCols; }
+                }
+
+                if (!player.isAttacking) { if (!player.isGrounded) player.frameY = 2; else if (Math.abs(player.vx) > 0.5) player.frameY = 0; else { player.frameY = 0; player.frameX = 0; } }
+                else { player.frameY = 3; }
             }
 
-            boss.isAttacking = false;
-            if (boss.state === "chase" && Math.abs(boss.vx) < 4) {
-                boss.vx = boss.direction * boss.speed;
-            } else if (boss.state === "idle") {
+            // --- GESTION MORT BOSS ---
+            if ((boss.hp <= 0 || boss.y > canvas.height) && boss.state !== "dead") {
+                boss.state = "dead";
+                boss.frameX = 0;
+                boss.frameTimer = 0;
+                boss.vx = 0;
+            }
+
+            // --- BOSS ---
+            if (boss.state === "dead") {
+                // Animation de mort du boss
                 boss.vx *= friction;
-            } else if (boss.state === "melee") {
-                boss.vx *= 0.5;
-                if (boss.actionTimer === 5) {
-                    boss.isAttacking = true;
-                    bossAttackMelee();
-                    boss.attackCooldown = 50;
-                }
-            } else if (boss.state === "range") {
-                boss.vx *= 0.5;
-                if (boss.actionTimer === 5) {
-                    bossAttackRange();
-                    boss.attackCooldown = 60;
-                }
-            }
+                boss.x += boss.vx;
+                boss.vy += gravity;
+                boss.y += boss.vy;
+                checkPlatform(boss);
 
-            boss.vx *= friction; boss.x += boss.vx;
-            boss.vy += gravity; boss.y += boss.vy;
+                boss.frameTimer++;
+                if (boss.frameTimer >= 8) { // Vitesse de la mort
+                    boss.frameTimer = 0;
+                    if (boss.frameX < bossMortCols - 1) {
+                        boss.frameX++;
+                    } else {
+                        victory = true; // Victoire déclenchée à la fin de l'animation
+                    }
+                }
+            } else {
+                let dist = player.x - boss.x; boss.direction = dist > 0 ? 1 : -1;
+                if (boss.attackCooldown > 0) boss.attackCooldown--;
+                boss.actionTimer--;
 
-            // --- NOUVEAU : COLLISIONS PHYSIQUES ENTRE LES PERSONNAGES ---
-            // S'ils se touchent, ils se repoussent (solidité)
-            if (player.y < boss.y + boss.height && player.y + player.height > boss.y) {
-                if (player.x < boss.x + boss.width && player.x + player.width > boss.x) {
-                    let centerPlayer = player.x + player.width / 2;
-                    let centerBoss = boss.x + boss.width / 2;
-                    let overlap = (player.width / 2 + boss.width / 2) - Math.abs(centerPlayer - centerBoss);
-                    
-                    if (overlap > 0) {
-                        // Pousse chacun de la moitié de l'overlap
-                        if (centerPlayer < centerBoss) {
-                            player.x -= overlap / 2;
-                            boss.x += overlap / 2;
-                        } else {
-                            player.x += overlap / 2;
-                            boss.x -= overlap / 2;
-                        }
+                if (boss.actionTimer <= 0) {
+                    let absDist = Math.abs(dist);
+                    // On modifie l'actionTimer pour couvrir toute l'animation (9 frames * 6 duration = 54)
+                    if (absDist < 80 && boss.attackCooldown === 0) {
+                        boss.state = "melee"; boss.actionTimer = 54; boss.frameX = 0; boss.frameTimer = 0;
+                    }
+                    else if (absDist > 150 && boss.attackCooldown === 0 && Math.random() < 0.6) {
+                        boss.state = "range"; boss.actionTimer = 54; boss.frameX = 0; boss.frameTimer = 0;
+                    }
+                    else {
+                        boss.actionTimer = 80 + Math.random() * 60;
+                        if (Math.random() > 0.4) boss.state = "chase"; else boss.state = "idle";
+                    }
+                    if (boss.isGrounded && Math.random() < 0.35 && boss.state !== "melee" && boss.state !== "range") {
+                        boss.vy = boss.jumpPower; boss.isGrounded = false;
+                    }
+                }
+
+                boss.isAttacking = false;
+                if (boss.state === "chase" && Math.abs(boss.vx) < 4) boss.vx = boss.direction * boss.speed;
+                else if (boss.state === "idle") boss.vx *= friction;
+                else if (boss.state === "melee") {
+                    boss.vx *= 0.5;
+                    // Frappe exactement sur la 6ème frame (index 5)
+                    if (boss.frameX === 5 && boss.frameTimer === 1) { boss.isAttacking = true; bossAttackMelee(); boss.attackCooldown = 60; }
+                }
+                else if (boss.state === "range") {
+                    boss.vx *= 0.5;
+                    // Lance la pierre exactement sur la 7ème frame (index 6)
+                    if (boss.frameX === 6 && boss.frameTimer === 1) { bossAttackRange(); boss.attackCooldown = 80; }
+                }
+
+                boss.frameTimer++;
+                let currentBossDuration = (!boss.isGrounded) ? 6 : (boss.state === "melee" || boss.state === "range") ? 6 : boss.frameDuration;
+
+                if (boss.frameTimer >= currentBossDuration) {
+                    boss.frameTimer = 0;
+                    boss.frameX = (boss.frameX + 1) % bossCols;
+                }
+
+                if (boss.state === "melee") {
+                    boss.frameY = BOSS_ANIM_MELEE; // Ligne 5
+                }
+                else if (boss.state === "range") {
+                    boss.frameY = BOSS_ANIM_RANGE; // Ligne 4
+                }
+                else {
+                    if (!boss.isGrounded) boss.frameY = BOSS_ANIM_JUMP; // Ligne 2
+                    else if (Math.abs(boss.vx) > 0.5) boss.frameY = BOSS_ANIM_WALK; // Ligne 1
+                    else { boss.frameY = BOSS_ANIM_WALK; boss.frameX = 0; }
+                }
+
+                boss.vx *= friction; boss.x += boss.vx; boss.vy += gravity; boss.y += boss.vy;
+
+                // --- COLLISIONS ---
+                if (!player.isDead) {
+                    if (player.y < boss.y + boss.height && player.y + player.height > boss.y && player.x < boss.x + boss.width && player.x + player.width > boss.x) {
+                        let centerPlayer = player.x + player.width / 2; let centerBoss = boss.x + boss.width / 2;
+                        let overlap = (player.width / 2 + boss.width / 2) - Math.abs(centerPlayer - centerBoss);
+                        if (overlap > 0) { if (centerPlayer < centerBoss) { player.x -= overlap / 2; boss.x += overlap / 2; } else { player.x += overlap / 2; boss.x -= overlap / 2; } }
                     }
                 }
             }
@@ -418,37 +473,35 @@
             for (let i = 0; i < projectiles.length; i++) {
                 let p = projectiles[i];
                 p.x += p.vx;
-                if (player.invulnerable === 0 && checkRectCollision(p, player)) {
-                    applyKnockback(player, p.vx > 0 ? 1 : -1, 8); // Dégâts réduits (Pierres)
-                    loseLife();
-                    projectiles.splice(i, 1); i--;
-                    continue;
+                p.vy += 0.15; // Légère gravité sur la pierre pour faire un bel arc
+                p.y += p.vy;
+                p.rot += p.vx > 0 ? 0.1 : -0.1; // Rotation
+
+                p.frameTimer++; if (p.frameTimer > 5) { p.frameTimer = 0; p.frameX = (p.frameX + 1) % pierreCols; }
+                let stoneDestroyed = false;
+                if (player.isAttacking && !player.isDead && !player.isHurt) {
+                    const swordHitbox = { x: player.direction === 1 ? player.x + player.width : player.x - 40, y: player.y + 10, width: 40, height: 20 };
+                    if (checkRectCollision(swordHitbox, p)) { projectiles.splice(i, 1); i--; stoneDestroyed = true; }
                 }
-                if (p.x < 0 || p.x > canvas.width) { projectiles.splice(i, 1); i--; }
+                if (stoneDestroyed) continue;
+                if (player.invulnerable === 0 && !player.isDead && checkRectCollision(p, player)) { applyKnockback(player, p.vx > 0 ? 1 : -1, 8); loseLife(); projectiles.splice(i, 1); i--; continue; }
+                if (p.x < 0 || p.x > canvas.width || p.y > canvas.height) { projectiles.splice(i, 1); i--; }
             }
 
-            checkPlatform(player); checkPlatform(boss);
+            checkPlatform(player);
+            if (boss.state !== "dead") checkPlatform(boss);
 
-            if (boss.y > canvas.height || boss.hp <= 0) victory = true;
-
-            if (player.y > canvas.height) {
-                loseLife();
-                if (player.lives > 0) {
-                    player.x = canvas.width / 2 - player.width / 2;
-                    player.y = 50;
-                    player.vx = 0;
-                    player.vy = 0;
-                }
-            }
+            if (player.y > canvas.height && !player.isDead) loseLife();
         }
 
-        // --- ATTAQUES ---
         function playerAttack() {
+            if (boss.hp <= 0) return;
             const hitbox = { x: player.direction === 1 ? player.x + player.width : player.x - 40, y: player.y + 10, width: 40, height: 20 };
             if (checkRectCollision(hitbox, boss)) {
                 if (Math.random() < 0.2) {
                     boss.vx = -boss.direction * 15; boss.state = "idle";
-                } else {
+                }
+                else {
                     applyKnockback(boss, player.direction, 12);
                     boss.hp--;
                 }
@@ -457,72 +510,131 @@
 
         function bossAttackMelee() {
             const hitbox = { x: boss.direction === 1 ? boss.x + boss.width : boss.x - 50, y: boss.y + 10, width: 50, height: 40 };
-            if (player.invulnerable === 0 && checkRectCollision(hitbox, player)) {
-                applyKnockback(player, boss.direction, 10); // Éjection réduite (Corps à corps)
-                loseLife();
-            }
+            if (player.invulnerable === 0 && !player.isDead && checkRectCollision(hitbox, player)) { applyKnockback(player, boss.direction, 10); loseLife(); }
         }
 
-        function bossAttackRange() { 
-            projectiles.push({ x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20, y: boss.y + 20, width: 25, height: 15, vx: boss.direction * 10 }); 
+        function bossAttackRange() {
+            // Ajout d'une propriété vy et rot pour la trajectoire et rotation
+            projectiles.push({ x: boss.direction === 1 ? boss.x + boss.width : boss.x - 20, y: boss.y + 10, width: 25, height: 25, vx: boss.direction * 5.5, vy: -3, rot: 0, frameX: 0, frameTimer: 0 });
         }
 
-        function applyKnockback(target, direction, force) {
-            target.vx = force * direction;
-            target.vy = -6;
-            target.isGrounded = false;
-        }
-
+        function applyKnockback(target, direction, force) { target.vx = force * direction; target.vy = -6; target.isGrounded = false; }
         function checkRectCollision(r1, r2) { return r1.x < r2.x + r2.width && r1.x + r1.width > r2.x && r1.y < r2.y + r2.height && r1.y + r1.height > r2.y; }
+        function checkPlatform(ent) { if (ent.vy > 0 && ent.x < platform.x + platform.width && ent.x + ent.width > platform.x && ent.y + ent.height >= platform.y && ent.y + ent.height <= platform.y + ent.vy + 2) { ent.isGrounded = true; ent.vy = 0; ent.y = platform.y - ent.height; } }
 
-        function checkPlatform(ent) {
-            if (ent.vy > 0 && ent.x < platform.x + platform.width && ent.x + ent.width > platform.x &&
-                ent.y + ent.height >= platform.y && ent.y + ent.height <= platform.y + ent.vy + 2) {
-                ent.isGrounded = true; ent.vy = 0; ent.y = platform.y - ent.height;
-            }
-        }
-
-        // --- AFFICHAGE ---
         function draw() {
-            ctx.fillStyle = "#87CEEB"; 
+            // Ciel
+            let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, "#4a90e2");
+            gradient.addColorStop(1, "#87CEEB");
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = "#95a5a6"; ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-
+            // Sol
             ctx.fillStyle = "#7f8c8d";
-            projectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
+            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            ctx.fillStyle = "#95a5a6";
+            ctx.fillRect(platform.x, platform.y, platform.width, 5); // Petit rebord
 
-            ctx.fillStyle = boss.state === "melee" && boss.actionTimer > 5 ? "#e67e22" : "#c0392b";
-            ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-            if (boss.isAttacking) {
-                ctx.fillStyle = "rgba(231, 76, 60, 0.8)";
-                ctx.fillRect(boss.direction === 1 ? boss.x + boss.width : boss.x - 50, boss.y + 10, 50, 40);
+            if (pierreSprite.complete && pierreSprite.naturalWidth > 0) {
+                let sW = pierreSprite.naturalWidth / pierreCols; let sH = pierreSprite.naturalHeight / pierreRows;
+                projectiles.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
+                    ctx.rotate(p.rot);
+                    ctx.drawImage(pierreSprite, p.frameX * sW, 0, sW, sH, -p.width / 2 - 10, -p.height / 2 - 10, p.width + 20, p.height + 20);
+                    ctx.restore();
+                });
+            } else { ctx.fillStyle = "#7f8c8d"; projectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height)); }
+
+            // --- DESSIN BOSS ---
+            if (boss.state === "dead" && bossMortSprite.complete && bossMortSprite.naturalWidth > 0) {
+                let sourceW = bossMortSprite.naturalWidth / bossMortCols;
+                let sourceH = bossMortSprite.naturalHeight;
+                let drawWidth = 110;
+                let drawHeight = 110;
+                let drawX = boss.x - (drawWidth - boss.width) / 2;
+                let drawY = boss.y - (drawHeight - boss.height) + BOSS_OFFSET_Y;
+
+                ctx.save();
+                if (boss.direction === -1) {
+                    ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2); ctx.scale(-1, 1);
+                    ctx.drawImage(bossMortSprite, boss.frameX * sourceW, 0, sourceW, sourceH, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+                } else {
+                    ctx.drawImage(bossMortSprite, boss.frameX * sourceW, 0, sourceW, sourceH, drawX, drawY, drawWidth, drawHeight);
+                }
+                ctx.restore();
+            }
+            else if (bossSprite.complete && bossSprite.naturalWidth > 0 && boss.state !== "dead") {
+                let sourceW = bossSprite.naturalWidth / bossCols; let sourceH = bossSprite.naturalHeight / bossRows;
+                let drawWidth = 100; let drawHeight = 100;
+                let drawX = boss.x - (drawWidth - boss.width) / 2; let drawY = boss.y - (drawHeight - boss.height) + BOSS_OFFSET_Y;
+
+                ctx.save();
+                if (boss.isAttacking) {
+                    ctx.fillStyle = "rgba(231, 76, 60, 0.4)";
+                    ctx.fillRect(boss.direction === 1 ? boss.x + boss.width : boss.x - 50, boss.y + 10, 50, 40);
+                }
+
+                if (boss.direction === -1) {
+                    ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2); ctx.scale(-1, 1);
+                    ctx.drawImage(bossSprite, boss.frameX * sourceW, boss.frameY * sourceH, sourceW, sourceH, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+                } else {
+                    ctx.drawImage(bossSprite, boss.frameX * sourceW, boss.frameY * sourceH, sourceW, sourceH, drawX, drawY, drawWidth, drawHeight);
+                }
+                ctx.restore();
+            } else if (boss.state !== "dead") { ctx.fillStyle = boss.state === "melee" && boss.actionTimer > 5 ? "#e67e22" : "#c0392b"; ctx.fillRect(boss.x, boss.y, boss.width, boss.height); }
+
+            // --- DESSIN JOUEUR ---
+            let currentSpriteFile = (player.isHurt || player.isDead) ? playerDegatSprite : playerSprite;
+            let currentCols = (player.isHurt || player.isDead) ? playerDegatCols : playerCols;
+            let currentRows = (player.isHurt || player.isDead) ? playerDegatRows : playerRows;
+
+            if (currentSpriteFile.complete && currentSpriteFile.naturalWidth > 0) {
+                let pSourceW = currentSpriteFile.naturalWidth / currentCols; let pSourceH = currentSpriteFile.naturalHeight / currentRows;
+                let pDrawWidth = 80; let pDrawHeight = 80;
+                let pDrawX = player.x - (pDrawWidth - player.width) / 2; let pDrawY = player.y - (pDrawHeight - player.height) + PLAYER_OFFSET_Y;
+
+                ctx.save();
+                if (player.invulnerable > 0 && player.invulnerable % 8 < 4 && !player.isDead) ctx.globalAlpha = 0.5;
+                if (player.isAttacking && !player.isHurt && !player.isDead) {
+                    ctx.fillStyle = "rgba(52, 152, 219, 0.4)";
+                    ctx.fillRect(player.direction === 1 ? player.x + player.width : player.x - 40, player.y + 10, 40, 20);
+                }
+
+                if (player.direction === -1) {
+                    ctx.translate(pDrawX + pDrawWidth / 2, pDrawY + pDrawHeight / 2); ctx.scale(-1, 1);
+                    ctx.drawImage(currentSpriteFile, player.frameX * pSourceW, player.frameY * pSourceH, pSourceW, pSourceH, -pDrawWidth / 2, -pDrawHeight / 2, pDrawWidth, pDrawHeight);
+                } else {
+                    ctx.drawImage(currentSpriteFile, player.frameX * pSourceW, player.frameY * pSourceH, pSourceW, pSourceH, pDrawX, pDrawY, pDrawWidth, pDrawHeight);
+                }
+                ctx.restore();
+            } else { if (player.invulnerable === 0 || player.invulnerable % 8 < 4) { ctx.fillStyle = "#3498db"; ctx.fillRect(player.x, player.y, player.width, player.height); } }
+
+            // --- UI ---
+            // Barres de vie du Joueur
+            ctx.fillStyle = "white"; ctx.font = "bold 20px Arial"; ctx.fillText("Vies :", 20, 35);
+            for (let i = 0; i < 5; i++) {
+                ctx.fillStyle = i < player.lives ? "#e74c3c" : "rgba(0,0,0,0.3)";
+                ctx.beginPath(); ctx.arc(95 + i * 22, 28, 8, 0, Math.PI * 2); ctx.fill();
             }
 
-            if (player.invulnerable === 0 || player.invulnerable % 8 < 4) {
-                ctx.fillStyle = "#3498db"; ctx.fillRect(player.x, player.y, player.width, player.height);
-            }
-            if (player.isAttacking) {
-                ctx.fillStyle = "rgba(52, 152, 219, 0.8)";
-                ctx.fillRect(player.direction === 1 ? player.x + player.width : player.x - 40, player.y + 10, 40, 20);
+            // Barre de vie du Boss
+            if (boss.hp > 0) {
+                let bossBarWidth = 300;
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(canvas.width - bossBarWidth - 20, 20, bossBarWidth, 20);
+                ctx.fillStyle = "#c0392b";
+                ctx.fillRect(canvas.width - bossBarWidth - 20, 20, bossBarWidth * (Math.max(0, boss.hp) / boss.maxHp), 20);
+                ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+                ctx.strokeRect(canvas.width - bossBarWidth - 20, 20, bossBarWidth, 20);
+                ctx.fillStyle = "white"; ctx.font = "bold 14px Arial";
+                ctx.fillText("LE SCHWEISSDISSI", canvas.width - bossBarWidth - 15, 15);
             }
 
-            ctx.fillStyle = "white"; ctx.font = "bold 20px Arial";
-            ctx.fillText("❤️ Vies : " + player.lives, 20, 35);
-
-            ctx.fillStyle = "#e74c3c"; ctx.font = "bold 20px Arial";
-            ctx.fillText("Boss : " + boss.hp + "/" + boss.maxHp + " PV", canvas.width - 200, 35);
-
-            if (victory) {
-                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#f1c40f"; ctx.font = "40px Arial"; ctx.fillText("BOSS VAINCU !", 250, 180);
-                ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour rejouer)", 300, 220);
-            }
-            if (gameOver) {
-                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "white"; ctx.font = "40px Arial"; ctx.fillText("DÉFAITE...", 300, 180);
-                ctx.fillStyle = "#e74c3c"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour réessayer)", 290, 220);
-            }
+            // Messages de Fin
+            if (victory) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "#f1c40f"; ctx.font = "bold 50px Arial"; ctx.fillText("BOSS VAINCU !", 310, 200); ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour rejouer)", 400, 250); }
+            if (gameOver) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "white"; ctx.font = "bold 50px Arial"; ctx.fillText("DÉFAITE...", 380, 200); ctx.fillStyle = "#e74c3c"; ctx.font = "20px Arial"; ctx.fillText("(Cliquez pour réessayer)", 390, 250); }
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
